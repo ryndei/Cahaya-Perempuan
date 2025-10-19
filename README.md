@@ -38,8 +38,7 @@ php artisan key:generate
 # sesuaikan konfigurasi DB di file .env kemudian:
 php artisan migrate --seed
 
-# build aset (pilih salah satu)
-npm run dev   # saat pengembangan (hot reload)
-npm run build # produksi
+# build aset 
+npm run dev   
 
 php artisan serve
