@@ -24,11 +24,19 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $request->authenticate();
-
+         $request->authenticate();
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = $request->user();
+
+        // Fallback tujuan setelah login (jika tidak ada URL intended)
+        $fallback = ($user && $user->hasAnyRole(['admin','super-admin']))
+            ? route('admin.dashboard', absolute: false)   // contoh: /admin
+            : route('dashboard', absolute: false);        // contoh: /dashboard (user)
+
+        // Jika user sebelumnya akses halaman terproteksi, intended() akan mengarahkan ke sana.
+        // Kalau tidak ada intended, pakai $fallback di atas.
+        return redirect()->intended($fallback);
     }
 
     /**

@@ -112,10 +112,6 @@
         </div>
       </div>
 
-      {{-- Footer kecil --}}
-      <p class="mt-8 text-center text-xs text-slate-500">
-        © {{ date('Y') }} {{ config('app.name') }} — Berperspektif korban • Rahasia • Aman
-      </p>
     </div>
   </div>
 </x-app-layout>

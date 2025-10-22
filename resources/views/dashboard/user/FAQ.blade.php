@@ -21,7 +21,7 @@
       <article class="relative rounded-2xl bg-white border border-slate-200 shadow-sm mt-2">
         <header class="px-6 sm:px-8 pt-7 pb-4">
           <h1 class="text-3xl font-black tracking-tight text-slate-800">
-            FREQUENCY ASKED QUESTION (FAQ)
+            PERTANYAAN YANG SERING DIAJUKAN (FAQ)
           </h1>
           <div class="mt-3 h-0.5 w-28 bg-purple-600/80 rounded-full"></div>
         </header>
@@ -54,7 +54,11 @@
             </p>
         </div>
         </div>
+        
       </article>
+      
     </div>
+  
   </div>
+  
 </x-app-layout>

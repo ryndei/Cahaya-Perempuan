@@ -4,7 +4,7 @@
   @php
     $menu = [
       ['label'=>'Beranda','href'=>route('dashboard'),'icon'=>'M3 12l3.6-3.6a9 9 0 0112.8 0L23 12','active'=>request()->routeIs('dashboard')],
-      ['label'=>'Pengaduan','href'=>route('pengaduan'),'icon'=>'M4 4h16v14H4z M8 22h8','active'=>request()->routeIs('pengaduan')],
+      ['label'=>'Pengaduan','href'=>route('complaints.index'),'icon'=>'M4 4h16v14H4z M8 22h8','active'=>request()->routeIs('complaints.*')],
       ['label'=>'Cara Melapor','href'=>route('cara-melapor'),'icon'=>'M4 6h16M4 12h16M4 18h10','active'=>request()->routeIs('cara-melapor')],
       ['label'=>'FAQ','href'=>route('FAQ'),'icon'=>'M12 18h.01 M8 9a4 4 0 118 0c0 2-3 2-3 4','active'=>request()->routeIs('FAQ')],
       ['label'=>'Hubungi Kami','href'=>route('kontak'),'icon'=>'M4 6l8 6 8-6v12H4z','active'=>request()->routeIs('kontak')],
