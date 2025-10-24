@@ -19,7 +19,8 @@ Route::get('/', fn () => view('welcome'));
 
 Route::get('/profil-lembaga', fn () => view('profil-lembaga'))->name('profil-lembaga');
 Route::get('/kontak-kami', fn () => view('kontak-kami'))->name('kontak-kami');
-
+Route::get('/cara-melapor-landing', fn () => view('cara-melapor-landing'))->name('cara-melapor-landing');
+Route::get('/syarat-layanan', fn () => view('syarat-layanan'))->name('syarat-layanan');
 /*
 |--------------------------------------------------------------------------
 | Static pages (user) – perlu login

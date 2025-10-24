@@ -11,9 +11,11 @@ class Complaint extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id','code','title','category','description','attachment_path','status','admin_note','reporter_name',
-        'reporter_address',
-        'reporter_phone',
+    'user_id','code','category','description','attachment_path','status','admin_note',
+    'reporter_name','reporter_phone','reporter_is_disability','reporter_age','reporter_job',
+    'province_code','province_name','regency_code','regency_name','district_code','district_name',
+    'reporter_address',
+    'perpetrator_name','perpetrator_job','perpetrator_age',
     ];
 
     protected static function booted(): void

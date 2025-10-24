@@ -67,7 +67,7 @@
         <label class="block text-sm font-medium mb-1">Cari</label>
         <input type="text" name="q" value="{{ request('q') }}"
                class="w-full rounded-md border-slate-300 focus:border-indigo-500 focus:ring-indigo-500"
-               placeholder="Judul, deskripsi, nama/email pelapor">
+               placeholder="deskripsi, nama/email pelapor">
       </div>
 
       <div>
@@ -108,19 +108,16 @@
       </div>
     </form>
 
-    {{-- =========================
-         DESKTOP TABLE (>= md)
-       ========================= --}}
+    {{-- DESKTOP TABLE (>= md) --}}
     <div class="hidden md:block">
       <div class="rounded-lg border border-slate-200 bg-white">
         <table class="min-w-full text-sm">
           <thead class="bg-slate-50 text-slate-700">
             <tr>
               <th class="px-4 py-3 text-left font-medium">No</th>
-              <th class="px-4 py-3 text-left font-medium">Judul</th>
+              <th class="px-4 py-3 text-left font-medium">Deskripsi</th>
               <th class="px-4 py-3 text-left font-medium">Pelapor</th>
               <th class="px-4 py-3 text-left font-medium">Status</th>
-              <th class="px-4 py-3 text-left font-medium">Visibilitas</th>
               <th class="px-4 py-3 text-left font-medium">Dibuat</th>
               <th class="px-4 py-3 text-left font-medium">Aksi</th>
             </tr>
@@ -145,16 +142,16 @@
                   {{ $statusLabels[$c->status] ?? ucfirst(str_replace('_',' ',$c->status)) }}
                 </span>
               </td>
-              <td class="px-4 py-3 capitalize">{{ str_replace('_',' ',$c->visibility) }}</td>
               <td class="px-4 py-3 whitespace-nowrap">
-                {{ optional($c->created_at)->format('d M Y H:i') }}
-                <div class="text-xs text-slate-500">{{ optional($c->created_at)->diffForHumans() }}</div>
+                {{ optional($c->created_at)?->translatedFormat('d M Y H:i') }}
+                <div class="text-xs text-slate-500">{{ optional($c->created_at)?->diffForHumans() }}</div>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <a href="{{ route('admin.complaints.show', $c) }}"
                      class="rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">Lihat</a>
 
+                  {{-- Quick update status --}}
                   <form method="POST" action="{{ route('admin.complaints.updateStatus', $c) }}"
                         onsubmit="return confirm('Ubah status laporan ini?')">
                     @csrf
@@ -177,7 +174,7 @@
             </tr>
           @empty
             <tr>
-              <td class="px-4 py-8 text-center text-slate-500" colspan="7">Belum ada pengaduan.</td>
+              <td class="px-4 py-8 text-center text-slate-500" colspan="6">Belum ada pengaduan.</td>
             </tr>
           @endforelse
           </tbody>
@@ -185,9 +182,7 @@
       </div>
     </div>
 
-    {{-- =====================
-         MOBILE CARDS (< md)
-       ===================== --}}
+    {{-- MOBILE CARDS (< md) --}}
     <div class="md:hidden space-y-3">
       @forelse ($complaints as $c)
         @php $badge = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700'; @endphp
@@ -205,15 +200,15 @@
                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badge }}">
                   {{ $statusLabels[$c->status] ?? ucfirst(str_replace('_',' ',$c->status)) }}
                 </span>
-                <span class="text-xs capitalize text-slate-600">• {{ str_replace('_',' ', $c->visibility) }}</span>
                 <span class="text-xs text-slate-500">
-                  • {{ optional($c->created_at)->format('d M Y H:i') }} ({{ optional($c->created_at)->diffForHumans() }})
+                  • {{ optional($c->created_at)?->translatedFormat('d M Y H:i') }}
+                  ({{ optional($c->created_at)?->diffForHumans() }})
                 </span>
               </div>
 
               <div class="mt-1 text-xs text-slate-500">
                 Pelapor: <span class="font-medium text-slate-700">{{ optional($c->user)->name ?? '—' }}</span>
-                <span class="hidden xs:inline">• {{ optional($c->user)->email }}</span>
+                <span class="hidden sm:inline">• {{ optional($c->user)->email }}</span>
               </div>
             </div>
 

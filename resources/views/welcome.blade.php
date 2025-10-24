@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   <title>{{ config('app.name', 'Support Center') }}</title>
-  <meta name="description" content="Ruang aman dan rahasia bagi perempuan dan anak penyintas kekerasan berbasis gender.">
+  <meta name="description" content="Ruang aman dan nyaman bagi perempuan dan anak penyintas kekerasan berbasis gender.">
 
   {{-- Fonts --}}
   <link rel="preconnect" href="https://fonts.bunny.net">
@@ -92,7 +92,7 @@
 
     <div class="relative z-[1] mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-24 text-center animate-fade-in">
       <h1 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900">
-        Ruang aman dan rahasia bagi perempuan dan anak yang mengalami kekerasan berbasis gender.
+        Ruang aman dan nyaman bagi perempuan dan anak yang mengalami kekerasan berbasis gender.
       </h1>
       <p class="mt-4 text-slate-700 max-w-3xl mx-auto">
         Kami menyediakan <strong>konseling</strong>, <strong>pendampingan</strong>, <strong>bantuan hukum</strong>, dan <strong>rumah perlindungan</strong>

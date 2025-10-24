@@ -32,6 +32,20 @@
                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60">
           Kontak Kami
         </a>
+        <a href="{{ route('cara-melapor') }}"
+           class="no-underline inline-flex items-center rounded-lg px-3 py-2 text-base font-semibold
+                  text-slate-800 hover:text-purple-700 transition-colors
+                  underline-offset-4 hover:underline decoration-2 decoration-purple-300
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60">
+          Cara Melapor
+        </a>
+        <a href="{{ route('syarat-layanan') }}"
+           class="no-underline inline-flex items-center rounded-lg px-3 py-2 text-base font-semibold
+                  text-slate-800 hover:text-purple-700 transition-colors
+                  underline-offset-4 hover:underline decoration-2 decoration-purple-300
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/60">
+          Syarat Layanan
+        </a>
       </nav>
 
       @if (Route::has('login'))

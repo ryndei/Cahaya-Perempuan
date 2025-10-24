@@ -10,8 +10,8 @@
       <div>
         <h4 class="font-semibold text-slate-900">Tautan Cepat</h4>
         <ul class="mt-2 space-y-2 text-sm">
-          <li><a class="no-underline hover:underline hover:text-purple-700" href="{{ url('/privacy') }}">Kebijakan Privasi</a></li>
-          <li><a class="no-underline hover:underline hover:text-purple-700" href="{{ url('/terms') }}">Syarat Layanan</a></li>
+
+          <li><a class="no-underline hover:underline hover:text-purple-700" href="{{ route('syarat-layanan') }}">Syarat Layanan</a></li>
           <li><a class="no-underline hover:underline hover:text-purple-700" href="{{ route('profil-lembaga') }}">Profil Lembaga</a></li>
           <li><a class="no-underline hover:underline hover:text-purple-700" href="{{ route('kontak-kami') }}">Kontak Kami</a></li>
         </ul>
@@ -36,7 +36,8 @@
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5 text-slate-700 group-hover:text-white"><path fill="currentColor" d="M13 10h3l-.4 3H13v9h-3v-9H8v-3h2V8.5A4 4 0 0 1 14.3 4H17v3h-2c-1 0-2 .5-2 1.7z"/></svg>
           </a>
           {{-- Email --}}
-          <a href="mailto:cp.wccbengkulu@gmail.com?subject=Permohonan%20Informasi&body=Halo%20CP%20WCC,%0D%0A"
+          <a href="https://mail.google.com/mail/?view=cm&fs=1&to=cp.wccbengkulu@gmail.com&su=Permintaan+Bantuan&body=Halo+Cahaya+Perempuan+WCC%0A%0ASaya+butuh+informasi+mengenai..."
+    target="_blank" rel="noopener"
              class="group h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-purple-700 transition" aria-label="Email">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="h-5 w-5 text-slate-700 group-hover:text-white"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2m0 4-8 5L4 8V6l8 5l8-5z"/></svg>
           </a>

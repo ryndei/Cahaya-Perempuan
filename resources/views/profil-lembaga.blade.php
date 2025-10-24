@@ -39,7 +39,7 @@
       <div class="mt-3 rounded-xl border border-slate-200 bg-white p-5">
         <p class="text-slate-800">
           “Terwujudnya kekuatan masyarakat sipil untuk mendorong pemerintah yang bertanggung jawab
-          dalam menghapuskan kekerasan terhadap perempuan dan anak perempuan—khususnya kekerasan seksual— 
+          dalam menghapuskan kekerasan terhadap perempuan dan anak perempuan khususnya kekerasan seksual
           berlandaskan nilai-nilai keadilan dan kesetaraan gender, disabilitas, dan inklusif.”
         </p>
       </div>
@@ -68,8 +68,9 @@
            class="inline-flex items-center rounded-lg bg-purple-700 px-4 py-2 text-white font-semibold hover:bg-purple-800">
           Hubungi via WhatsApp
         </a>
-        <a href="mailto:cp.wccbengkulu@gmail.com"
-           class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-800 hover:bg-slate-100">
+        <a href="https://mail.google.com/mail/?view=cm&fs=1&to=cp.wccbengkulu@gmail.com&su=Permintaan+Bantuan&body=Halo+Cahaya+Perempuan+WCC%0A%0ASaya+butuh+informasi+mengenai..."
+    target="_blank" rel="noopener"
+    class="inline-flex items-center rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800">
           Kirim Email
         </a>
       </div>

@@ -3,6 +3,8 @@
           <a href="/" class="no-underline px-3 py-2 rounded-md text-sm text-slate-800 hover:bg-purple-50 hover:text-purple-700">Beranda</a>
           <a href="{{ route('profil-lembaga') }}" class="no-underline px-3 py-2 rounded-md text-sm text-slate-800 hover:bg-purple-50 hover:text-purple-700">Profil Lembaga</a>
           <a href="{{ route('kontak-kami') }}" class="no-underline px-3 py-2 rounded-md text-sm text-slate-800 hover:bg-purple-50 hover:text-purple-700">Kontak Kami</a>
+          <a href="{{ route('cara-melapor') }}" class="no-underline px-3 py-2 rounded-md text-sm text-slate-800 hover:bg-purple-50 hover:text-purple-700">Cara Melapor</a>
+          <a href="{{ route('syarat-layanan') }}" class="no-underline px-3 py-2 rounded-md text-sm text-slate-800 hover:bg-purple-50 hover:text-purple-700">Syarat Layanan</a>
 
           @guest
             @if (Route::has('login'))
