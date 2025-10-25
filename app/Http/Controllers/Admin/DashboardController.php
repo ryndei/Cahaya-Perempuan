@@ -10,12 +10,12 @@ class DashboardController extends Controller
 {
     public function __invoke()
     {
-        // Stat box
+        
         $counts = [
             'baru' => Complaint::where('status', 'submitted')->count(),
             'aktif' => Complaint::whereIn('status', ['submitted','in_review','follow_up'])->count(),
             'follow_up' => Complaint::where('status', 'follow_up')->count(),
-            'selesai_bulan_ini' => Complaint::where('status', 'closed')
+            'selesai_bulan_ini' => Complaint::where('status','like', 'closed%')
                 ->whereBetween('updated_at', [now()->startOfMonth(), now()->endOfMonth()])
                 ->count(),
         ];

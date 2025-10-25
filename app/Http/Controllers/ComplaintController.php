@@ -20,7 +20,11 @@ class ComplaintController extends Controller
         $complaints = Complaint::where('user_id', Auth::id())
             ->latest()->paginate(10);
 
-        return view('dashboard.user.complaints.index', compact('complaints'));
+             $recent = Complaint::where('user_id', Auth::id())
+        ->latest()
+        ->take(5)
+        ->get();
+        return view('dashboard.user.complaints.index', compact('complaints', 'recent'));
     }
 
     public function create(): View
@@ -60,16 +64,18 @@ class ComplaintController extends Controller
     {
         $data = $request->validated();
 
-        if ($request->hasFile('attachment')) {
-            $data['attachment_path'] = $request->file('attachment')
-                ->store('complaints', 'public');
-        }
+    // Hardening: jangan izinkan user isi status/admin_note
+    unset($data['status'], $data['admin_note']);
+    $data['status'] = \App\Models\Complaint::STATUS_SUBMITTED; // redundan tapi aman
 
-        // user_id & code diisi otomatis via model booted()
-        Complaint::create($data);
+    if ($request->hasFile('attachment')) {
+        $data['attachment_path'] = $request->file('attachment')->store('complaints', 'public');
+    }
 
-        return redirect()->route('complaints.index')
-            ->with('status', 'Pengaduan berhasil dikirim.');
+    Complaint::create($data); // user_id & code diisi otomatis via booted()
+
+    return redirect()->route('complaints.index')
+        ->with('status', 'Pengaduan berhasil dikirim.');
     }
 
     public function show(Complaint $complaint): View

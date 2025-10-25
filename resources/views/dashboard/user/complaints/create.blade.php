@@ -235,13 +235,6 @@
             @error('description')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
           </div>
 
-          <div class="mt-3">
-            <label class="block text-sm font-medium text-slate-700">Lampiran (opsional)</label>
-            <input type="file" name="attachment"
-                   class="mt-1 w-full rounded-lg border-slate-300 file:mr-3 file:rounded-md file:border-0 file:bg-purple-600 file:px-3 file:py-2 file:text-white hover:file:bg-purple-700" />
-            <p class="mt-1 text-xs text-slate-500">jpg, jpeg, png, pdf, doc, docx, mp4 • maks 5MB</p>
-            @error('attachment')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
-          </div>
         </section>
 
         {{-- ============ AKSI ============ --}}
@@ -251,7 +244,27 @@
           </button>
           <a href="{{ route('complaints.index') }}" class="text-slate-600 hover:underline">Batal</a>
         </div>
+{{-- NOTE: Berkas yang perlu dibawa saat verifikasi --}}
+<div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900" role="note" aria-label="Catatan berkas verifikasi">
+  <div class="flex items-start gap-3">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11 7h2v2h-2V7m1-5a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2m1 15h-2v-6h2v6Z"/>
+    </svg>
 
+    <div>
+      <p class="font-semibold">Catatan: Siapkan berkas saat datang ke kantor/asesmen</p>
+      <ul class="mt-2 list-disc pl-5 space-y-1">
+        <li>Fotokopi <strong>KTP</strong> pelapor/korban <span class="text-xs">(bawa asli untuk dicocokkan)</span></li>
+        <li>Fotokopi <strong>Kartu Keluarga (KK)</strong></li>
+        <li><strong>SKTM</strong> (Surat Keterangan Tidak Mampu) <span class="text-xs">(jika diperlukan/ada)</span></li>
+        <li>Untuk kasus <strong>KDRT</strong>, bawa juga <strong>Buku Nikah</strong> atau dokumen status perkawinan.</li>
+      </ul>
+      <p class="mt-2 text-xs text-amber-900/80">
+        Jika belum memiliki SKTM, bisa menyusul dengan surat pengantar dari RT/RW atau kelurahan.
+      </p>
+    </div>
+  </div>
+</div>
         <p class="text-xs text-slate-500">
           Data Anda kami jaga sesuai prinsip kerahasiaan & keselamatan. Pengisian opsional boleh dikosongkan jika tidak nyaman.
         </p>

@@ -15,7 +15,10 @@ class StoreComplaintRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        $phone = preg_replace('/\s+/', '', (string) $this->input('reporter_phone'));
+        // CHANGED: bersihkan spasi, tanda kurung, strip pada nomor
+        $rawPhone = (string) $this->input('reporter_phone');
+        $phone = preg_replace('/[\s\-\(\)]/', '', $rawPhone);
+
         $rawDisability = $this->input('reporter_is_disability', null);
         $disability = null;
         if ($rawDisability !== null && $rawDisability !== '') {
@@ -27,7 +30,8 @@ class StoreComplaintRequest extends FormRequest
 
         $this->merge([
             'category'               => trim((string) $this->input('category')),
-            'description'            => (string) $this->input('description'),
+            // CHANGED: trim deskripsi (opsional, kalau mau lebih aman bisa strip_tags)
+            'description'            => trim((string) $this->input('description')),
 
             'reporter_name'          => trim((string) $this->input('reporter_name')),
             'reporter_phone'         => $phone,
@@ -51,7 +55,6 @@ class StoreComplaintRequest extends FormRequest
 
     public function rules(): array
     {
-       
         $allowedCategories = [
             'KDRT Terhadap Anak',
             'KDRT Terhadap Istri',
@@ -62,12 +65,15 @@ class StoreComplaintRequest extends FormRequest
         ];
 
         return [
-            'category'               => ['nullable','string','max:100', Rule::in($allowedCategories)],
-            'description'            => ['required','string','min:20'],
+            
+            'category'               => ['bail','required','string','max:100', Rule::in($allowedCategories)],
+           
+            'description'            => ['bail','required','string','min:30'],
 
             'attachment'             => ['nullable','file','mimes:jpg,jpeg,png,pdf,doc,docx,mp4','max:5120'],
 
             'reporter_name'          => ['nullable','string','max:120'],
+           
             'reporter_phone'         => ['nullable','string','max:30','regex:/^\+?\d{8,15}$/'],
             'reporter_is_disability' => ['nullable','boolean'],
             'reporter_age'           => ['nullable','integer','min:0','max:120'],
@@ -84,18 +90,26 @@ class StoreComplaintRequest extends FormRequest
             'perpetrator_name'       => ['nullable','string','max:120'],
             'perpetrator_job'        => ['nullable','string','max:100'],
             'perpetrator_age'        => ['nullable','integer','min:0','max:120'],
+
+            // CHANGED: tambahkan rule prohibited untuk mencegah manipulasi
+            'status'                 => ['prohibited'],
+            'admin_note'             => ['prohibited'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'category.required'          => 'Kategori wajib dipilih.',
+            'category.in'                => 'Kategori tidak dikenal.',
             'description.min'            => 'Deskripsi minimal :min karakter.',
             'attachment.mimes'           => 'Lampiran harus berupa: jpg, jpeg, png, pdf, doc, docx, atau mp4.',
             'attachment.max'             => 'Ukuran lampiran maksimal 5MB.',
             'reporter_phone.regex'       => 'Format nomor telepon tidak valid. Gunakan 8–15 digit dan boleh diawali tanda +.',
             'reporter_is_disability.boolean' => 'Nilai disabilitas harus ya/tidak (1/0).',
-            'category.in'                => 'Kategori tidak dikenal.',
+            // CHANGED: pesan untuk prohibited
+            'status.prohibited'          => 'Field status tidak boleh dikirim oleh pengguna.',
+            'admin_note.prohibited'      => 'Catatan admin tidak boleh dikirim oleh pengguna.',
         ];
     }
 

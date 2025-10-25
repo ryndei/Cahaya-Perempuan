@@ -5,21 +5,31 @@
   </x-slot>
 
   @php
-    // badge status utk tabel kecil & kartu mobile
-    $statusLabels = [
-      'submitted'  => 'Diajukan',
-      'in_review'  => 'Ditinjau',
-      'follow_up'  => 'Ditindaklanjuti',
-      'closed'     => 'Selesai',
-    ];
-    $statusClasses = [
-      'submitted'  => 'bg-slate-100 text-slate-700',
-      'in_review'  => 'bg-amber-100 text-amber-800',
-      'follow_up'  => 'bg-blue-100 text-blue-800',
-      'closed'     => 'bg-emerald-100 text-emerald-800',
-    ];
-  @endphp
+    $statusLabels = \App\Models\Complaint::statusLabels();
 
+    // badge status utk tabel kecil & kartu mobile
+    $statusClasses = [
+      'submitted'        => 'bg-slate-100 text-slate-700',
+      'in_review'        => 'bg-amber-100 text-amber-800',
+      'follow_up'        => 'bg-blue-100 text-blue-800',
+      'closed'           => 'bg-emerald-100 text-emerald-800',
+      'closed_pa'        => 'bg-emerald-100 text-emerald-800',
+      'closed_pn'        => 'bg-teal-100 text-teal-800',
+      'closed_mediation' => 'bg-lime-100 text-lime-800',
+    ];
+
+    // Label singkat (tooltip tetap pakai full label)
+    $shortStatusLabels = [
+      'submitted'        => 'Diajukan',
+      'in_review'        => 'Ditinjau',
+      'follow_up'        => 'Ditindaklanjuti',
+      'closed'           => 'Selesai',
+      'closed_pa'        => 'Selesai — PA',
+      'closed_pn'        => 'Selesai — PN',
+      'closed_mediation' => 'Selesai — Mediasi',
+    ];
+
+  @endphp
   {{-- Main content --}}
   <div class="py-6">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,21 +57,24 @@
         </x-ui.card>
       </div>
 
-      {{-- Row: Stats (klik = buka daftar yang sudah difilter) --}}
+      {{-- Row: Stats --}}
       <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         <a href="{{ route('admin.complaints.index', ['status' => 'submitted']) }}" class="block">
           <x-ui.stat title="Laporan Baru" value="{{ $counts['baru'] ?? 0 }}" />
         </a>
-        <a href="{{ route('admin.complaints.index', ['status' => 'active']) }}" class="block">
+
+        <a href="{{ route('admin.complaints.index', ['status_group' => 'active']) }}" class="block">
           <x-ui.stat title="Kasus Aktif" value="{{ $counts['aktif'] ?? 0 }}" />
         </a>
+
         <a href="{{ route('admin.complaints.index', ['status' => 'follow_up']) }}" class="block">
           <x-ui.stat title="Ditindaklanjuti" value="{{ $counts['follow_up'] ?? 0 }}" />
         </a>
+
         <a href="{{ route('admin.complaints.index', [
-              'status' => 'closed',
-              'from' => now()->startOfMonth()->toDateString(),
-              'to'   => now()->endOfMonth()->toDateString()
+              'status_group' => 'closed_all',
+              'from'         => now()->startOfMonth()->toDateString(),
+              'to'           => now()->endOfMonth()->toDateString(),
             ]) }}" class="block">
           <x-ui.stat title="Selesai Bulan Ini" value="{{ $counts['selesai_bulan_ini'] ?? 0 }}" />
         </a>
@@ -69,52 +82,97 @@
 
       {{-- Tabel: Pengaduan Terbaru (DESKTOP ≥ md) --}}
       <div class="mt-6 hidden md:block">
-        <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+        <div class="rounded-2xl border border-slate-200 bg-white">
           <div class="flex items-center justify-between px-4 py-3">
             <h2 class="text-sm font-semibold text-slate-700">Pengaduan Terbaru</h2>
             <a href="{{ route('admin.complaints.index') }}" class="text-sm text-purple-700 hover:underline">Lihat semua</a>
           </div>
-          <table class="min-w-full text-sm">
+
+          <table class="w-full table-fixed text-sm">
+            {{-- ⬇️ Kunci lebar kolom dengan persentase agar TIDAK ada horizontal scroll --}}
+            <colgroup>
+              <col class="w-[5%]">
+              <col class="w-[12%]">
+              <col class="w-[35%]">
+              <col class="w-[15%]">
+              <col class="w-[14%]">
+              <col class="w-[12%]">
+              <col class="w-[7%]">
+            </colgroup>
+
             <thead class="bg-slate-50 text-slate-700">
               <tr>
+                <th class="px-4 py-3 text-left font-medium">No</th>
                 <th class="px-4 py-3 text-left font-medium">Kode</th>
-                <th class="px-4 py-3 text-left font-medium">Judul</th>
+                <th class="px-4 py-3 text-left font-medium">Deskripsi</th>
                 <th class="px-4 py-3 text-left font-medium">Pelapor</th>
                 <th class="px-4 py-3 text-left font-medium">Status</th>
                 <th class="px-4 py-3 text-left font-medium">Dibuat</th>
                 <th class="px-4 py-3"></th>
               </tr>
             </thead>
+
             <tbody class="divide-y divide-slate-100">
               @forelse($recent as $c)
-                @php $badge = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700'; @endphp
+                @php
+                  $badge = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700';
+                  $statusText = $statusLabels[$c->status] ?? ucfirst(str_replace('_',' ',$c->status));
+                  $fullStatus  = $statusLabels[$c->status] ?? \Illuminate\Support\Str::headline($c->status);
+                  $shortStatus = $shortStatusLabels[$c->status] ?? $fullStatus;
+                @endphp
                 <tr class="hover:bg-slate-50">
-                  <td class="px-4 py-3 whitespace-nowrap">{{ $c->code ?? $c->id }}</td>
-                  <td class="px-4 py-3">
-                    <div class="font-medium">{{ \Illuminate\Support\Str::limit($c->title, 60) }}</div>
-                    <div class="text-slate-500">{{ \Illuminate\Support\Str::limit($c->description, 80) }}</div>
+                  {{-- No --}}
+                  <td class="px-4 py-3 align-top">
+                    {{ $loop->iteration }}
                   </td>
-                  <td class="px-4 py-3">
-                    <div class="font-medium">{{ optional($c->user)->name ?? '—' }}</div>
-                    <div class="text-slate-500 text-xs">{{ optional($c->user)->email ?? '' }}</div>
+
+                  {{-- Kode --}}
+                  <td class="px-4 py-3 align-top font-medium truncate">
+                    {{ $c->code ?? $c->id }}
                   </td>
-                  <td class="px-4 py-3">
-                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badge }}">
-                      {{ $statusLabels[$c->status] ?? ucfirst(str_replace('_',' ',$c->status)) }}
+
+                  {{-- Deskripsi (judul + potongan) --}}
+                  <td class="px-4 py-3 align-top">
+                    <div class="font-medium text-slate-900 truncate">
+                      {{ \Illuminate\Support\Str::limit($c->title, 80) }}
+                    </div>
+                    <div class="text-slate-500 truncate">
+                      {{ \Illuminate\Support\Str::limit($c->description, 120) }}
+                    </div>
+                  </td>
+
+                  {{-- Pelapor --}}
+                  <td class="px-4 py-3 align-top">
+                    <div class="font-medium truncate">{{ optional($c->user)->name ?? '—' }}</div>
+                    <div class="text-slate-500 text-xs truncate">{{ optional($c->user)->email ?? '' }}</div>
+                  </td>
+
+                  {{-- Status (badge wrap supaya tidak melebar) --}}
+                  <td class="px-4 py-3 align-top">
+                    <span
+                      class="inline-block rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badge }} max-w-full [overflow-wrap:anywhere] text-center"
+                      title="{{ $fullStatus }}">
+                      {{ $shortStatus }}
                     </span>
                   </td>
-                  <td class="px-4 py-3 whitespace-nowrap">
-                    {{ optional($c->created_at)->format('d M Y H:i') }}
-                    <div class="text-xs text-slate-500">{{ optional($c->created_at)->diffForHumans() }}</div>
+
+                  {{-- Dibuat --}}
+                  <td class="px-4 py-3 align-top">
+                    <div class="truncate">{{ $c->created_at?->locale('id')->translatedFormat('d M Y') }}</div>
+                    <div class="text-xs text-slate-500 truncate">{{ optional($c->created_at)->diffForHumans() }}</div>
                   </td>
-                  <td class="px-4 py-3 text-right">
+
+                  {{-- Aksi --}}
+                  <td class="px-4 py-3 align-top text-right">
                     <a href="{{ route('admin.complaints.show', $c) }}"
-                       class="rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">Lihat</a>
+                       class="rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">
+                      Lihat
+                    </a>
                   </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="px-4 py-6 text-center text-slate-500">Belum ada pengaduan.</td>
+                  <td colspan="7" class="px-4 py-6 text-center text-slate-500">Belum ada pengaduan.</td>
                 </tr>
               @endforelse
             </tbody>
@@ -133,32 +191,33 @@
           @forelse ($recent as $c)
             @php $badge = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700'; @endphp
             <div class="rounded-xl border border-slate-200 bg-white p-4">
-              <div class="flex items-start justify-between gap-3">
+              <div class="grid grid-cols-[1fr_auto] items-start gap-3">
                 <div class="min-w-0">
-                  <div class="text-xs text-slate-500">#{{ $c->code ?? $c->id }}</div>
-                  <div class="mt-0.5 text-sm font-semibold text-slate-900 truncate">
+                  <div class="text-xs text-slate-500">#{{ $c->code ?? $c->id }} 
+                    <span
+                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badge }}"
+                    title="{{ $fullStatus }}">
+                    {{ $shortStatus }}
+                  </span>
+                </div>
+                  <div class="mt-0.5 text-sm font-semibold text-slate-900 break-words">
                     {{ \Illuminate\Support\Str::limit($c->title, 80) }}
                   </div>
-                  <div class="mt-1 text-sm text-slate-600 line-clamp-2">
-                    {{ \Illuminate\Support\Str::limit($c->description, 120) }}
-                  </div>
-
-                  <div class="mt-2 flex flex-wrap items-center gap-2">
-                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badge }}">
-                      {{ $statusLabels[$c->status] ?? ucfirst(str_replace('_',' ',$c->status)) }}
-                    </span>
-                    <span class="text-xs text-slate-500">
-                      {{ optional($c->created_at)->format('d M Y H:i') }} • {{ optional($c->created_at)->diffForHumans() }}
-                    </span>
-                  </div>
-
+                                  
                   <div class="mt-1 text-xs text-slate-500">
                     Pelapor:
                     <span class="font-medium text-slate-700">{{ optional($c->user)->name ?? '—' }}</span>
                     <span class="block">{{ optional($c->user)->email }}</span>
                   </div>
+                  <div class="mt-1 font-bold text-slate-700">
+                    Deskripsi
+                  </div>
+                 
+                  <div class="mt-1 text-sm text-slate-600 break-words"> 
+                    {{ \Illuminate\Support\Str::limit($c->description, 120) }}
+                  </div>
                 </div>
-
+                
                 <a href="{{ route('admin.complaints.show', $c) }}"
                    class="shrink-0 rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">Lihat</a>
               </div>
