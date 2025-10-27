@@ -7,7 +7,9 @@ use App\Models\Complaint;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Auth;
-
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 // Wilayah (opsional)
 use Laravolt\Indonesia\Models\Province;
 use Laravolt\Indonesia\Models\City;
@@ -20,16 +22,16 @@ class ComplaintController extends Controller
         $complaints = Complaint::where('user_id', Auth::id())
             ->latest()->paginate(10);
 
-             $recent = Complaint::where('user_id', Auth::id())
-        ->latest()
-        ->take(5)
-        ->get();
+        $recent = Complaint::where('user_id', Auth::id())
+            ->latest()
+            ->take(5)
+            ->get();
+
         return view('dashboard.user.complaints.index', compact('complaints', 'recent'));
     }
 
     public function create(): View
     {
-        // Kategori default
         $categories = [
             'KDRT Terhadap Anak',
             'KDRT Terhadap Istri',
@@ -39,7 +41,6 @@ class ComplaintController extends Controller
             'Lainnya',
         ];
 
-        // Data wilayah (aman walau paket tidak terpasang)
         $provinsi = class_exists(Province::class)
             ? Province::select('code', 'name')->orderBy('name')->get()
             : collect();
@@ -50,11 +51,11 @@ class ComplaintController extends Controller
                 ->map(fn ($rows) => $rows->map(fn ($c) => ['code' => $c->code, 'name' => $c->name])->values())
             : collect();
 
-        // PENTING: District merefer ke city_code (bukan regency_code)
+        // District merefer ke city_code
         $districts = class_exists(District::class)
             ? District::select('code', 'name', 'city_code')->orderBy('name')->get()
                 ->groupBy('city_code')
-                ->map(fn ($rows) => $rows->map(fn ($d) => ['code' => $d->code, 'name' => $d->name])->values())  
+                ->map(fn ($rows) => $rows->map(fn ($d) => ['code' => $d->code, 'name' => $d->name])->values())
             : collect();
 
         return view('dashboard.user.complaints.create', compact('categories', 'provinsi', 'cities', 'districts'));
@@ -64,28 +65,60 @@ class ComplaintController extends Controller
     {
         $data = $request->validated();
 
-    // Hardening: jangan izinkan user isi status/admin_note
-    unset($data['status'], $data['admin_note']);
-    $data['status'] = \App\Models\Complaint::STATUS_SUBMITTED; // redundan tapi aman
+        // Hardening: abaikan input berbahaya
+        unset($data['user_id'], $data['code'], $data['status'], $data['admin_note']);
+        $data['status'] = Complaint::STATUS_SUBMITTED;
 
-    if ($request->hasFile('attachment')) {
-        $data['attachment_path'] = $request->file('attachment')->store('complaints', 'public');
-    }
+        try {
+            // Buat record (user_id & code dipaksa di Model::creating)
+            $complaint = Complaint::create($data);
 
-    Complaint::create($data); // user_id & code diisi otomatis via booted()
+            // Simpan lampiran ke DISK PRIVAT
+            if ($request->hasFile('attachment')) {
+                $path = Storage::disk('private')->putFile('complaints/'.$complaint->id, $request->file('attachment'));
+                $complaint->attachment_path = $path;
+                $complaint->save();
+            }
 
-    return redirect()->route('complaints.index')
-        ->with('status', 'Pengaduan berhasil dikirim.');
+            return redirect()->route('complaints.index')->with('status', 'Pengaduan berhasil dikirim.');
+        } catch (\Throwable $e) {
+            Log::error('Gagal menyimpan pengaduan', [
+                'error'   => $e->getMessage(),
+                'user_id' => Auth::id(),
+            ]);
+
+            return back()->withInput()->withErrors([
+                'error' => 'Terjadi kesalahan saat menyimpan pengaduan. Silakan coba lagi.',
+            ]);
+        }
     }
 
     public function show(Complaint $complaint): View
     {
         abort_if(
             $complaint->user_id !== Auth::id()
-            && ! (Auth::check() && Auth::user()->hasAnyRole(['admin', 'super-admin'])),
+            && !(Auth::check() && Auth::user()->hasAnyRole(['admin', 'super-admin'])),
             403
         );
 
         return view('dashboard.user.complaints.show', compact('complaint'));
     }
+
+    public function downloadAttachment(Complaint $complaint): StreamedResponse
+{
+    // Batasi akses: pemilik/tuan tiket atau admin/super-admin
+    $isOwner = $complaint->user_id === Auth::id();
+    $isAdmin = Auth::check() && Auth::user()->hasAnyRole(['admin', 'super-admin']);
+    abort_unless($isOwner || $isAdmin, 403);
+
+    // Pastikan ada path & file exist di disk privat
+    if (!$complaint->attachment_path || !Storage::disk('private')->exists($complaint->attachment_path)) {
+        abort(404, 'Lampiran tidak ditemukan.');
+    }
+
+    // Nama file download yang ramah (tanpa bocorkan struktur internal)
+    $downloadName = 'lampiran-'.$complaint->code.'.'.pathinfo($complaint->attachment_path, PATHINFO_EXTENSION) ?: 'bin';
+
+    return Storage::disk('private')->download($complaint->attachment_path, $downloadName);
+}
 }

@@ -15,18 +15,26 @@ return new class extends Migration {
             // Kode unik (mis. CP-YYMMDD-ABCDE)
             $t->string('code')->unique();
 
-            // Data pelapor (opsional)
-            $t->string('reporter_name', 120)->nullable();
-            $t->string('reporter_phone', 30)->nullable();
+            /**
+             * PII / data sensitif (TEXT agar aman untuk ciphertext).
+             * Akan DIENKRIPSI di Model via $casts = ['encrypted' => ...].
+             */
+            $t->text('reporter_name')->nullable();       // encrypted
+            $t->text('reporter_phone')->nullable();      // encrypted
+            $t->text('reporter_address')->nullable();    // encrypted
+            $t->text('reporter_job')->nullable();        // encrypted
 
-            // Disabilitas: gunakan tri-state (null=tidak diisi, 0=tidak, 1=ya)
+            // Blind index untuk pencarian exact match nomor telepon (tanpa buka PII)
+            $t->char('reporter_phone_hash', 64)->nullable()->index();
+
+            // Umur pelapor → simpan terenkripsi + bucket polos untuk agregasi/filter
+            $t->text('reporter_age')->nullable();              // encrypted (isi mentah)
+            $t->unsignedTinyInteger('reporter_age_bucket')->nullable()->index(); // 1..7 (lihat Model)
+
+            // Disabilitas: tri-state (null=unknown, 0=no, 1=yes) — polos untuk filter
             $t->boolean('reporter_is_disability')->nullable()->comment('null=unknown, 0=no, 1=yes');
 
-            // Umur & pekerjaan pelapor
-            $t->unsignedTinyInteger('reporter_age')->nullable();
-            $t->string('reporter_job', 100)->nullable();
-
-            // Lokasi terstruktur + alamat detail
+            // Lokasi terstruktur + nama wilayah (polos untuk filter/sort)
             $t->string('province_code', 10)->nullable()->index();
             $t->string('province_name', 100)->nullable();
             $t->string('regency_code', 10)->nullable()->index();
@@ -34,20 +42,24 @@ return new class extends Migration {
             $t->string('district_code', 10)->nullable()->index();
             $t->string('district_name', 100)->nullable();
 
-            // Alamat spesifik (jalan, RT/RW, dsb.)
-            $t->string('reporter_address', 255)->nullable();
+            // Data pelaku (sensitif)
+            $t->text('perpetrator_name')->nullable();   // encrypted
+            $t->text('perpetrator_job')->nullable();    // encrypted
+            $t->text('perpetrator_age')->nullable();    // encrypted
+            $t->unsignedTinyInteger('perpetrator_age_bucket')->nullable()->index();
 
-            // Data pelaku (opsional)
-            $t->string('perpetrator_name', 120)->nullable();
-            $t->string('perpetrator_job', 100)->nullable();
-            $t->unsignedTinyInteger('perpetrator_age')->nullable();
+            // Kategori (opsional, polos)
+            $t->string('category')->nullable();
 
-            // Lainnya
-            $t->string('category')->nullable();           // opsional
-            $t->text('description');
-            $t->string('attachment_path')->nullable();    // opsional
-            $t->string('status', 30)->default('submitted')->index(); // submitted|in_review|follow_up|closed
-            $t->text('admin_note')->nullable();           // catatan admin (opsional)
+            // Narasi & catatan internal (sensitif → encrypted)
+            $t->text('description');                    // encrypted
+            $t->text('admin_note')->nullable();         // encrypted
+
+            // Lampiran: simpan PATH saja (file-nya disimpan di disk privat)
+            $t->string('attachment_path')->nullable();
+
+            // Status untuk workflow (polos untuk filter/report)
+            $t->string('status', 30)->default('submitted')->index(); // submitted|in_review|follow_up|closed|...
 
             $t->timestamps();
         });

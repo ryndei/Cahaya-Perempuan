@@ -14,6 +14,8 @@ use App\Http\Controllers\Admin\DashboardController;
 | Public Pages
 |--------------------------------------------------------------------------
 */
+
+
 Route::get('/', fn () => view('welcome'));
 
 Route::get('/profil-lembaga', fn () => view('profil-lembaga'))->name('profil-lembaga');
@@ -22,7 +24,7 @@ Route::get('/cara-melapor-landing', fn () => view('cara-melapor-landing'))->name
 Route::get('/syarat-layanan', fn () => view('syarat-layanan'))->name('syarat-layanan');
 /*
 |--------------------------------------------------------------------------
-| Static pages (user) – perlu login
+| Static pages 
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
@@ -70,11 +72,23 @@ Route::middleware(['auth','verified','role:admin|super-admin'])->group(function 
 | USER – Pengaduan (semua user terverifikasi)
 |--------------------------------------------------------------------------
 */
+
 Route::middleware(['auth','verified'])->group(function () {
-    Route::get('/pengaduan',                 [ComplaintController::class, 'index'])->name('complaints.index');
-    Route::get('/pengaduan/buat',            [ComplaintController::class, 'create'])->name('complaints.create');
-    Route::post('/pengaduan',                [ComplaintController::class, 'store'])->name('complaints.store');
-    Route::get('/pengaduan/{complaint}',     [ComplaintController::class, 'show'])->name('complaints.show');
+    // Pakai code sebagai route key untuk mencegah penebakan ID numerik
+    Route::get('/pengaduan',                          [ComplaintController::class, 'index'])->name('complaints.index');
+    Route::get('/pengaduan/buat',                     [ComplaintController::class, 'create'])->name('complaints.create');
+
+    // Tambahkan rate limit khusus untuk mencegah spam pengajuan
+    Route::post('/pengaduan',                         [ComplaintController::class, 'store'])
+        ->middleware('throttle:complaints')
+        ->name('complaints.store');
+
+    // Binding by code: pastikan Model Complaint override getRouteKeyName() -> 'code'
+    Route::get('/pengaduan/{complaint:code}',         [ComplaintController::class, 'show'])->name('complaints.show');
+
+    // Download lampiran dari storage privat (akses dibatasi)
+    Route::get('/pengaduan/{complaint:code}/lampiran', [ComplaintController::class, 'downloadAttachment'])
+        ->name('complaints.download');
 });
 
 /*
