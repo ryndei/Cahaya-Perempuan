@@ -54,7 +54,7 @@ class ComplaintController extends Controller
         $districts = class_exists(District::class)
             ? District::select('code', 'name', 'city_code')->orderBy('name')->get()
                 ->groupBy('city_code')
-                ->map(fn ($rows) => $rows->map(fn ($d) => ['code' => $d->code, 'name' => $d->name])->values())
+                ->map(fn ($rows) => $rows->map(fn ($d) => ['code' => $d->code, 'name' => $d->name])->values())  
             : collect();
 
         return view('dashboard.user.complaints.create', compact('categories', 'provinsi', 'cities', 'districts'));

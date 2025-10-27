@@ -40,6 +40,11 @@
         {{ session('status') }}
       </div>
     @endif
+    @if (session('success'))
+      <div class="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800">
+        {{ session('success') }}
+      </div>
+    @endif
 
     @php
       $statusLabels = \App\Models\Complaint::statusLabels();
@@ -132,6 +137,12 @@
                 $badgeClass  = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700';
                 $fullStatus  = $statusLabels[$c->status] ?? \Illuminate\Support\Str::headline($c->status);
                 $shortStatus = $shortStatusLabels[$c->status] ?? $fullStatus;
+
+                // ⬇️ info pengubah terakhir (pastikan controller eager-load: with(['lastStatusActivity.causer']))
+                $changer    = optional($c->lastStatusActivity?->causer)->name;
+                $changedAt  = optional($c->lastStatusActivity?->created_at);
+                $changedTxt = $changedAt ? $changedAt->diffForHumans() : null;
+                $tip        = trim(($changer ? "Terakhir diubah: {$changer}" : "Terakhir diubah") . ($changedTxt ? " • {$changedTxt}" : ""));
               @endphp
 
               <tr class="odd:bg-white even:bg-slate-50/50 hover:bg-indigo-50/40 transition-colors">
@@ -155,12 +166,21 @@
                   <div class="text-slate-500 text-xs">{{ optional($c->user)->email ?? '' }}</div>
                 </td>
 
-                <td class="px-4 py-3 align-top whitespace-nowrap">
-                  <span
-                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badgeClass }}"
-                    title="{{ $fullStatus }}">
-                    {{ $shortStatus }}
-                  </span>
+                <td class="px-4 py-3 align-top">
+                  {{-- Badge status + info pengubah terakhir --}}
+                  <div class="whitespace-nowrap">
+                    <span
+                      class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badgeClass }}"
+                      @if($tip) title="{{ $tip }}" @endif
+                    >
+                      {{ $shortStatus }}
+                    </span>
+                  </div>
+                  @if($changer || $changedAt)
+                    <div class="mt-1 text-[11px] text-slate-500 leading-4 max-w-[10.5rem] truncate">
+                      @if($changer)Di Ubah Oleh <span class="font-medium text-slate-700">{{ $changer }}</span>@endif
+                    </div>
+                  @endif
                 </td>
 
                 <td class="px-4 py-3 align-top">
@@ -206,73 +226,86 @@
     </div>
 
     {{-- MOBILE CARDS (< md) --}}
-<div class="md:hidden space-y-3">
-  @forelse ($complaints as $c)
-    @php
-      $badgeClass  = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700';
-      $fullStatus  = $statusLabels[$c->status] ?? \Illuminate\Support\Str::headline($c->status);
-      $shortStatus = $shortStatusLabels[$c->status] ?? $fullStatus;
-    @endphp
+    <div class="md:hidden space-y-3">
+      @forelse ($complaints as $c)
+        @php
+          $badgeClass  = $statusClasses[$c->status] ?? 'bg-slate-100 text-slate-700';
+          $fullStatus  = $statusLabels[$c->status] ?? \Illuminate\Support\Str::headline($c->status);
+          $shortStatus = $shortStatusLabels[$c->status] ?? $fullStatus;
 
-    <div class="rounded-xl border border-slate-200 bg-white p-4">
-      {{-- ✅ grid 1fr auto + min-w-0 + break-words agar tombol tidak terdorong --}}
-      <div class="grid grid-cols-[1fr_auto] items-start gap-3">
-        <div class="min-w-0">
-          <div class="text-sm font-semibold text-slate-900 break-words">
-            #{{ $c->code ?? $c->id }} — {{ \Illuminate\Support\Str::limit($c->category ?? 'Tanpa kategori', 80) }}
-          </div>
-          <div class="mt-1 text-sm text-slate-600 break-words">
-            {{ \Illuminate\Support\Str::limit($c->description, 120) }}
+          $changer    = optional($c->lastStatusActivity?->causer)->name;
+          $changedAt  = optional($c->lastStatusActivity?->created_at);
+        @endphp
+
+        <div class="rounded-xl border border-slate-200 bg-white p-4">
+          {{-- grid 1fr auto untuk tombol Lihat --}}
+          <div class="grid grid-cols-[1fr_auto] items-start gap-3">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-slate-900 break-words">
+                #{{ $c->code ?? $c->id }} — {{ \Illuminate\Support\Str::limit($c->category ?? 'Tanpa kategori', 80) }}
+              </div>
+              <div class="mt-1 text-sm text-slate-600 break-words">
+                {{ \Illuminate\Support\Str::limit($c->description, 120) }}
+              </div>
+
+              <div class="mt-2 space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badgeClass }}"
+                        title="{{ $fullStatus }}">
+                    {{ $shortStatus }}
+                  </span>
+                  <span class="text-xs text-slate-500">
+                    • {{ optional($c->created_at)?->translatedFormat('d M Y H:i') }}
+                    ({{ optional($c->created_at)?->diffForHumans() }})
+                  </span>
+                </div>
+
+                {{-- Info pengubah terakhir (mobile) --}}
+                @if($changer || $changedAt)
+                  <div class="text-[11px] text-slate-500 leading-4">
+                    @if($changer) oleh <span class="font-medium text-slate-700">{{ $changer }}</span>@endif
+                    @if($changedAt) <span class="opacity-70">• {{ $changedAt->diffForHumans() }}</span> @endif
+                  </div>
+                @endif
+              </div>
+
+              <div class="mt-1 text-xs text-slate-500">
+                Pelapor: <span class="font-medium text-slate-700">{{ optional($c->user)->name ?? '—' }}</span>
+                <span class="hidden sm:inline">• {{ optional($c->user)->email }}</span>
+              </div>
+            </div>
+
+            <a href="{{ route('admin.complaints.show', $c) }}"
+               class="shrink-0 self-start rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">
+              Lihat
+            </a>
           </div>
 
-          <div class="mt-2 flex flex-wrap items-center gap-2">
-            <span class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badgeClass }}"
-                  title="{{ $fullStatus }}">
-              {{ $shortStatus }}
-            </span>
-            <span class="text-xs text-slate-500">
-              • {{ optional($c->created_at)?->translatedFormat('d M Y H:i') }}
-              ({{ optional($c->created_at)?->diffForHumans() }})
-            </span>
-          </div>
-
-          <div class="mt-1 text-xs text-slate-500">
-            Pelapor: <span class="font-medium text-slate-700">{{ optional($c->user)->name ?? '—' }}</span>
-            <span class="hidden sm:inline">• {{ optional($c->user)->email }}</span>
-          </div>
+          {{-- Quick update status (mobile) --}}
+          <form class="mt-3" method="POST" action="{{ route('admin.complaints.updateStatus', $c) }}"
+                onsubmit="return confirm('Ubah status laporan ini?')">
+            @csrf
+            @method('PATCH')
+            <div class="flex items-center gap-2">
+              <select name="status"
+                      class="flex-1 rounded-md border-slate-300 text-xs focus:border-indigo-500 focus:ring-indigo-500">
+                @foreach ($statusLabels as $val => $label)
+                  <option value="{{ $val }}" @selected($c->status===$val)>{{ $label }}</option>
+                @endforeach
+              </select>
+              <button class="rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900">
+                Update
+              </button>
+            </div>
+            <input type="hidden" name="admin_note" value="">
+          </form>
         </div>
-
-        <a href="{{ route('admin.complaints.show', $c) }}"
-           class="shrink-0 self-start rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">
-          Lihat
-        </a>
-      </div>
-
-      {{-- Quick update status (mobile) --}}
-      <form class="mt-3" method="POST" action="{{ route('admin.complaints.updateStatus', $c) }}"
-            onsubmit="return confirm('Ubah status laporan ini?')">
-        @csrf
-        @method('PATCH')
-        <div class="flex items-center gap-2">
-          <select name="status"
-                  class="flex-1 rounded-md border-slate-300 text-xs focus:border-indigo-500 focus:ring-indigo-500">
-            @foreach ($statusLabels as $val => $label)
-              <option value="{{ $val }}" @selected($c->status===$val)>{{ $label }}</option>
-            @endforeach
-          </select>
-          <button class="rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900">
-            Update
-          </button>
+      @empty
+        <div class="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
+          Belum ada pengaduan.
         </div>
-        <input type="hidden" name="admin_note" value="">
-      </form>
+      @endforelse
     </div>
-  @empty
-    <div class="rounded-xl border border-slate-200 bg-white p-6 text-center text-slate-500">
-      Belum ada pengaduan.
-    </div>
-  @endforelse
-</div>
 
     <div class="mt-6">
       {{ $complaints->links() }}

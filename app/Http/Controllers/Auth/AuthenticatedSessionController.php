@@ -29,13 +29,12 @@ class AuthenticatedSessionController extends Controller
 
         $user = $request->user();
 
-        // Fallback tujuan setelah login (jika tidak ada URL intended)
+        
         $fallback = ($user && $user->hasAnyRole(['admin','super-admin']))
-            ? route('admin.dashboard', absolute: false)   // contoh: /admin
-            : route('dashboard', absolute: false);        // contoh: /dashboard (user)
+            ? route('admin.dashboard', absolute: false)   
+            : route('dashboard', absolute: false);        
 
-        // Jika user sebelumnya akses halaman terproteksi, intended() akan mengarahkan ke sana.
-        // Kalau tidak ada intended, pakai $fallback di atas.
+        
         return redirect()->intended($fallback);
     }
 

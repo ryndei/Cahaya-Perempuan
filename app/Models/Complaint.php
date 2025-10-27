@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Complaint extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /** Status constants */
     public const STATUS_SUBMITTED         = 'submitted';
@@ -28,7 +30,7 @@ class Complaint extends Model
         'perpetrator_name','perpetrator_job','perpetrator_age',
     ];
 
-    /** Casts & default attributes (opsional, tapi bagus) */
+    /** Casts & default attributes */
     protected $casts = [
         'reporter_is_disability' => 'boolean',
         'reporter_age'           => 'integer',
@@ -43,15 +45,36 @@ class Complaint extends Model
     {
         static::creating(function (Complaint $c) {
             $c->code    ??= 'CP-'.now()->format('ymd').'-'.strtoupper(Str::random(5));
-            $c->user_id ??= Auth::id(); // pastikan user login saat submit
+            $c->user_id ??= Auth::id();
         });
     }
 
-    /** Relasi */
+    /* ===================== Relasi ===================== */
+
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
+    /** Semua aktivitas terkait complaint ini */
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
+    /**
+     * Aktivitas TERAKHIR yang memang mengubah "status".
+     * Digunakan untuk menampilkan "diubah oleh siapa & kapan" pada tabel.
+     */
+    public function lastStatusActivity()
+    {
+        return $this->morphOne(\Spatie\Activitylog\Models\Activity::class, 'subject')
+            ->where('event', 'updated')
+            ->whereNotNull('properties->attributes->status') // hanya perubahan status
+            ->latestOfMany();
+    }
+
+    /* =============== Label & Accessor bantu =============== */
 
     /** Map value -> label untuk dropdown & badge */
     public static function statusLabels(): array
@@ -74,7 +97,20 @@ class Complaint extends Model
             ?? ucfirst(str_replace('_', ' ', $this->status));
     }
 
-    /** Scopes bantu */
+    /** Opsional: nama orang yang terakhir mengubah status */
+    public function getLastStatusUpdatedByAttribute(): ?string
+    {
+        return optional($this->lastStatusActivity?->causer)->name;
+    }
+
+    /** Opsional: waktu terakhir status diubah */
+    public function getLastStatusUpdatedAtAttribute(): ?\Illuminate\Support\Carbon
+    {
+        return $this->lastStatusActivity?->created_at;
+    }
+
+    /* ===================== Scopes ===================== */
+
     public function scopeClosed($q)
     {
         return $q->whereIn('status', [
@@ -92,6 +128,44 @@ class Complaint extends Model
             self::STATUS_CLOSED_PA,
             self::STATUS_CLOSED_PN,
             self::STATUS_CLOSED_MEDIATION,
+        ]);
+    }
+
+    /* ===================== Spatie Activity Log ===================== */
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('complaint')
+            ->logOnly(['status', 'admin_note']) // atau ->logFillable()
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
+    }
+
+    public function getDescriptionForEvent(string $eventName): string
+    {
+        return match ($eventName) {
+            'created' => 'Pengaduan dibuat',
+            'updated' => 'Pengaduan diperbarui',
+            'deleted' => 'Pengaduan dihapus',
+            default   => $eventName,
+        };
+    }
+
+    public function tapActivity(\Spatie\Activitylog\Contracts\Activity $activity, string $eventName)
+    {
+        $labels    = static::statusLabels();
+        $oldStatus = $this->getOriginal('status');
+        $newStatus = $this->status;
+
+        $activity->properties = $activity->properties->merge([
+            'complaint_code' => $this->code ?? $this->id,
+            'ip'             => request()->ip(),
+            'user_agent'     => request()->userAgent(),
+            'from'           => $oldStatus,
+            'to'             => $newStatus,
+            'from_label'     => $oldStatus ? ($labels[$oldStatus] ?? $oldStatus) : null,
+            'to_label'       => $newStatus ? ($labels[$newStatus] ?? $newStatus) : null,
         ]);
     }
 }

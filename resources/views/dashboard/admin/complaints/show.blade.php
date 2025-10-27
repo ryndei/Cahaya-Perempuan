@@ -43,9 +43,9 @@
     ];
     $badge = $statusClasses[$complaint->status] ?? 'bg-slate-100 text-slate-800';
 
-    // Tanggal
-    $createdAtText = optional($complaint->created_at)?->translatedFormat('d F Y H:i') ?? '—';
-    $updatedAtText = optional($complaint->updated_at)?->translatedFormat('d F Y H:i') ?? '—';
+    // Tanggal (pakai singkatan bulan "Jan, Feb, Mar, ...")
+    $createdAtText = optional($complaint->created_at)?->translatedFormat('d M Y H:i') ?? '—';
+    $updatedAtText = optional($complaint->updated_at)?->translatedFormat('d M Y H:i') ?? '—';
 
     // Disabilitas
     $disabilityText = is_null($complaint->reporter_is_disability)
@@ -66,18 +66,45 @@
     $statusLabel = method_exists($complaint, 'getStatusLabelAttribute')
       ? $complaint->status_label
       : ($statusLabels[$complaint->status] ?? ucfirst(str_replace('_',' ', $complaint->status)));
+
+    // ====== INFO PENGUBAH TERAKHIR (AMBIL DARI ACTIVITYLOG) ======
+    // Prefer relasi lastStatusActivity (kalau ada); fallback ke aktivitas terakhir "status_updated" / "updated"
+    $lastAct = null;
+    if (method_exists($complaint, 'lastStatusActivity')) {
+      $lastAct = $complaint->lastStatusActivity; // bisa jadi null
+    }
+    if (!$lastAct) {
+      $lastAct = $complaint->activities()
+        ->whereIn('event', ['status_updated','updated'])
+        ->latest('id')
+        ->first();
+    }
+    $lastChanger = optional($lastAct?->causer)->name ?? optional($lastAct?->causer)->email;
+    $lastChangedAt = optional($lastAct?->created_at);
+    $lastChangedAtText = $lastChangedAt ? $lastChangedAt->translatedFormat('d M Y H:i') : null;
+    $lastChangedDiff   = $lastChangedAt ? $lastChangedAt->diffForHumans() : null;
+
+    // (Opsional) Riwayat status singkat
+    $history = $complaint->activities()
+      ->whereIn('event', ['status_updated','updated'])
+      ->latest('id')
+      ->take(5)
+      ->get();
   @endphp
 
   <div class="mx-auto max-w-6xl p-6 space-y-6">
     @if (session('status'))
       <div class="no-print rounded-lg bg-green-50 px-4 py-3 text-green-700">{{ session('status') }}</div>
     @endif
+    @if (session('success'))
+      <div class="no-print rounded-lg bg-emerald-50 px-4 py-3 text-emerald-800">{{ session('success') }}</div>
+    @endif
 
     {{-- ====== GRID UTAMA ====== --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {{-- KIRI: Rincian --}}
       <div class="lg:col-span-2 rounded-2xl border border-slate-200 bg-white p-6 overflow-hidden">
-        {{-- HEADER CARD: wrap di mobile, tombol Cetak tetap di dalam --}}
+        {{-- HEADER CARD --}}
         <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div class="min-w-0">
             <h1 class="text-lg font-semibold break-words">
@@ -88,16 +115,27 @@
             </p>
           </div>
 
-          <div class="shrink-0 flex items-center gap-2">
-            <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badge }}">
-              {{ $statusLabel }}
-            </span>
+          <div class="shrink-0 flex flex-col items-end gap-1">
+            <div class="flex items-center gap-2">
+              <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {{ $badge }}">
+                {{ $statusLabel }}
+              </span>
 
-            <button type="button" onclick="window.print()"
-              class="no-print inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold
-                     border border-slate-300 text-slate-700 hover:bg-slate-50">
-              Cetak
-            </button>
+              <button type="button" onclick="window.print()"
+                class="no-print inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-sm font-semibold
+                       border border-slate-300 text-slate-700 hover:bg-slate-50">
+                Cetak
+              </button>
+            </div>
+
+            {{-- Info pengubah terakhir --}}
+            @if($lastChanger || $lastChangedAtText)
+              <div class="text-[11px] text-slate-500 leading-4">
+                Terakhir diubah
+                @if($lastChanger) oleh <span class="font-medium text-slate-700">{{ $lastChanger }}</span>@endif
+                @if($lastChangedAtText) • <span title="{{ $lastChangedAtText }}">{{ $lastChangedDiff }}</span>@endif
+              </div>
+            @endif
           </div>
         </div>
 
@@ -121,8 +159,8 @@
 
           <div>
             <dt class="font-medium text-slate-700">Deskripsi</dt>
-            {{-- KUNCI: cegah overflow teks panjang di mobile --}}
-            <dd class="text-slate-800 whitespace-pre-line break-words overflow-x-auto">
+            {{-- Cegah overflow teks panjang --}}
+            <dd class="text-slate-800 whitespace-pre-line break-words">
               {{ $complaint->description }}
             </dd>
           </div>
@@ -147,7 +185,7 @@
         </dl>
       </div>
 
-      {{-- KANAN: Data Pelapor & Pelaku --}}
+      {{-- KANAN: Data Pelapor & Pelaku + Riwayat --}}
       <div class="space-y-6">
         {{-- Data Pelapor --}}
         <div class="rounded-2xl border border-slate-200 bg-white p-6">
@@ -213,6 +251,46 @@
               <dd class="col-span-2 text-slate-800 break-words">{{ $complaint->perpetrator_job ?: '—' }}</dd>
             </div>
           </dl>
+        </div>
+
+        {{-- Riwayat Status (5 terbaru) --}}
+        <div class="rounded-2xl border border-slate-200 bg-white p-6">
+          <h2 class="text-sm font-semibold text-slate-700">Riwayat Status</h2>
+          @if($history->isEmpty())
+            <p class="mt-3 text-sm text-slate-500">Belum ada perubahan status.</p>
+          @else
+            <ol class="mt-3 space-y-3">
+              @foreach ($history as $act)
+                @php
+                  $p = $act->properties ?? collect();
+                  $from = $p['from_label'] ?? $p['from'] ?? null;
+                  $to   = $p['to_label']   ?? $p['to']   ?? null;
+                  $by   = optional($act->causer)->name ?? optional($act->causer)->email;
+                  $at   = optional($act->created_at);
+                @endphp
+                <li class="text-sm">
+                  <div class="flex items-start gap-2">
+                    <div class="mt-1 h-2 w-2 rounded-full bg-slate-400"></div>
+                    <div class="flex-1 min-w-0">
+                      <div class="text-slate-800">
+                        @if($from || $to)
+                          <span class="font-medium">{{ $from ?: '—' }}</span>
+                          <span class="mx-1">→</span>
+                          <span class="font-medium">{{ $to ?: '—' }}</span>
+                        @else
+                          {{ $act->description ?? 'Perubahan status' }}
+                        @endif
+                      </div>
+                      <div class="text-xs text-slate-500">
+                        @if($by) Oleh <span class="font-medium text-slate-700">{{ $by }}</span>@endif
+                        @if($at) • {{ $at->translatedFormat('d M Y H:i') }} ({{ $at->diffForHumans() }}) @endif
+                      </div>
+                    </div>
+                  </div>
+                </li>
+              @endforeach
+            </ol>
+          @endif
         </div>
       </div>
     </div>

@@ -8,8 +8,7 @@ use App\Http\Controllers\ComplaintController;
 // Admin
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\DashboardController; // <- untuk admin dashboard dinamis
-
+use App\Http\Controllers\Admin\DashboardController;
 /*
 |--------------------------------------------------------------------------
 | Public Pages
