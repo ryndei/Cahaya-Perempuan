@@ -58,8 +58,6 @@ class StoreComplaintRequest extends FormRequest
                 if (!preg_match('/^\d{1,3}$/', (string)$val)) $fail('Umur pelaku harus angka 0-999.');
             }],
 
-            // Lampiran (privat)
-            'attachment'        => ['nullable','file','max:10240','mimes:jpg,jpeg,png,pdf,doc,docx'],
 
             // Hardening: user tidak boleh set ini
             'user_id'           => ['prohibited'],

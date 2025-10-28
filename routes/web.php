@@ -69,7 +69,7 @@ Route::middleware(['auth','verified','role:admin|super-admin'])->group(function 
 
 /*
 |--------------------------------------------------------------------------
-| USER – Pengaduan (semua user terverifikasi)
+| USER – Pengaduan 
 |--------------------------------------------------------------------------
 */
 
@@ -85,10 +85,6 @@ Route::middleware(['auth','verified'])->group(function () {
 
     // Binding by code: pastikan Model Complaint override getRouteKeyName() -> 'code'
     Route::get('/pengaduan/{complaint:code}',         [ComplaintController::class, 'show'])->name('complaints.show');
-
-    // Download lampiran dari storage privat (akses dibatasi)
-    Route::get('/pengaduan/{complaint:code}/lampiran', [ComplaintController::class, 'downloadAttachment'])
-        ->name('complaints.download');
 });
 
 /*

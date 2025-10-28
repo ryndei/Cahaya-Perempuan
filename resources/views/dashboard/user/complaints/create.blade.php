@@ -4,46 +4,12 @@
   </x-slot>
 
   @php
-    // Ambil data provinsi + anak-anaknya (regency/city & district) bila paket tersedia
-    $provinceTree = collect();
-    if (class_exists(\Laravolt\Indonesia\Models\Province::class)) {
-        $provinceTree = \Laravolt\Indonesia\Models\Province::query()
-            ->with([
-                'cities' => fn ($q) => $q->select('id','code','name','province_code')->orderBy('name'),
-                'cities.districts' => fn ($q) => $q->select('id','code','name','city_code')->orderBy('name'),
-            ])
-            ->select('id','code','name')
-            ->orderBy('name')
-            ->get()
-            ->map(fn ($p) => [
-                'code' => $p->code,
-                'name' => $p->name,
-                'regencies' => $p->cities->map(fn ($c) => [
-                    'code' => $c->code,
-                    'name' => $c->name,
-                    'districts' => $c->districts->map(fn ($d) => [
-                        'code' => $d->code,
-                        'name' => $d->name,
-                    ])->values(),
-                ])->values(),
-            ])->values();
-    }
-
-   
-    $categories = $categories ?? [
-    'KDRT Terhadap Anak',
-    'KDRT Terhadap Istri',
-    'Kekerasan Seksual Berbasis Online (KSBO)',
-    'Kekerasan dalam Pacaran',
-    'Lainnya',
-  ];
-
     // Nilai default (agar ringkas dipakai di atribut value/selected)
     $oldProvince  = old('province_code');
     $oldRegency   = old('regency_code');
     $oldDistrict  = old('district_code');
   @endphp
-
+  
   <div class="max-w-3xl mx-auto p-6">
     @if (session('status'))
       <div class="mb-4 rounded-lg bg-green-50 px-4 py-3 text-green-700">
@@ -242,7 +208,8 @@
           <button class="rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800">
             Kirim Pengaduan
           </button>
-          <a href="{{ route('complaints.index') }}" class="text-slate-600 hover:underline">Batal</a>
+          <a href="{{ route('complaints.index') }}" class="rounded-lg bg-white px-4 py-2 border  text-slate-800 hover:bg-slate-50
+                      focus:outline-none focus:ring-2 focus:ring-purple-300">Batal</a>
         </div>
 {{-- NOTE: Berkas yang perlu dibawa saat verifikasi --}}
 <div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900" role="note" aria-label="Catatan berkas verifikasi">

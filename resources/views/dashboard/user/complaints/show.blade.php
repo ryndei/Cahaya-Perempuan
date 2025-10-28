@@ -4,63 +4,6 @@
     <div class="print:hidden">@include('profile.partials.top-menu')</div>
   </x-slot>
 
-  @php
-    // Status (label + warna)
-    $statusLabels = \App\Models\Complaint::statusLabels();
-
-      // Warna badge
-      $statusClasses = [
-        'submitted'        => 'bg-slate-100 text-slate-700',
-        'in_review'        => 'bg-amber-100 text-amber-800',
-        'follow_up'        => 'bg-blue-100 text-blue-800',
-        'closed'           => 'bg-emerald-100 text-emerald-800',
-        'closed_pa'        => 'bg-emerald-100 text-emerald-800',
-        'closed_pn'        => 'bg-teal-100 text-teal-800',
-        'closed_mediation' => 'bg-lime-100 text-lime-800',
-      ];
-
-      // Label singkat untuk tampilan tabel (full label tampil di tooltip)
-      $shortStatusLabels = [
-        'submitted'        => 'Diajukan',
-        'in_review'        => 'Ditinjau',
-        'follow_up'        => 'Ditindaklanjuti',
-        'closed'           => 'Selesai',
-        'closed_pa'        => 'Selesai — PA',
-        'closed_pn'        => 'Selesai — PN',
-        'closed_mediation' => 'Selesai — Mediasi',
-      ];
-    $badge = $statusClasses[$complaint->status] ?? 'bg-slate-100 text-slate-800 ring-slate-200';
-
-    // Lampiran
-    $hasAttachment = filled($complaint->attachment_path ?? null);
-    $ext = $hasAttachment ? strtolower(pathinfo($complaint->attachment_path, PATHINFO_EXTENSION)) : null;
-    $isImage = $hasAttachment && in_array($ext, ['jpg','jpeg','png','gif','webp']);
-    $attachmentUrl = $hasAttachment ? asset('storage/'.$complaint->attachment_path) : null;
-
-    // Kode & tanggal
-    $displayCode   = $complaint->code ?? $complaint->id;
-    $createdAtText = optional($complaint->created_at)?->translatedFormat('d F Y H:i') ?? '—';
-    $updatedAtText = optional($complaint->updated_at)?->translatedFormat('d F Y H:i') ?? '—';
-
-    // Pelapor
-    $reporterName  = $complaint->reporter_name ?: (optional($complaint->user)->name ?? '—');
-    $reporterPhone = $complaint->reporter_phone ?: '—';
-    $reporterAge   = $complaint->reporter_age ?? null;
-    $reporterJob   = $complaint->reporter_job ?: '—';
-    $disabilityDisplay = is_null($complaint->reporter_is_disability) ? '—' : ($complaint->reporter_is_disability ? 'Ya' : 'Tidak');
-
-    // Lokasi pelapor (dukung city_* atau regency_*)
-    $provinceName = $complaint->province_name ?? '—';
-    $cityName     = $complaint->city_name ?? ($complaint->regency_name ?? '—');
-    $districtName = $complaint->district_name ?? '—';
-    $addressLine  = $complaint->reporter_address ?: '—';
-
-    // Pelaku
-    $perpetratorName = $complaint->perpetrator_name ?: '—';
-    $perpetratorJob  = $complaint->perpetrator_job ?: '—';
-    $perpetratorAge  = $complaint->perpetrator_age ?? null;
-  @endphp
-
   <div class="max-w-5xl mx-auto p-6 space-y-6">
     {{-- Breadcrumb & Aksi --}}
     <div class="flex items-center justify-between">
@@ -70,23 +13,17 @@
         <span class="text-slate-700">Pengaduan #{{ $displayCode }}</span>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 print:hidden">
         <button type="button" onclick="window.print()"
                 class="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50">
           Cetak
         </button>
-        @if ($hasAttachment)
-          <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener"
-             class="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50">
-            Buka Lampiran
-          </a>
-        @endif
       </div>
     </div>
 
     {{-- 2 kolom: Kiri (utama) + Kanan (ringkasan) --}}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {{-- KIRI: CARD UTAMA (detail + pelapor + pelaku) --}}
+      {{-- KIRI: CARD UTAMA --}}
       <div class="lg:col-span-2 space-y-6">
         <div class="rounded-2xl border border-slate-200 bg-white p-6">
           <div class="mb-4 flex items-start justify-between gap-3">
@@ -112,98 +49,49 @@
             </div>
           @endif
 
-          <div class="mb-6">
-            <p class="font-medium text-slate-800">Deskripsi</p>
-            <p class="mt-1 whitespace-pre-line leading-relaxed text-slate-700">
-              {{ $complaint->description }}
-            </p>
+            <div class="mb-6">
+              <p class="font-medium text-slate-800">Deskripsi</p>
+              <p class="mt-1 whitespace-pre-line break-words hyphens-auto leading-relaxed text-slate-700">
+            {{ $complaint->description }}
+              </p>
           </div>
 
-          {{-- Lampiran --}}
-          @if ($hasAttachment)
-            <div class="mb-6">
-              <p class="font-medium text-slate-800">Lampiran</p>
-              <div class="mt-2">
-                @if ($isImage)
-                  <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener" class="group block">
-                    <img src="{{ $attachmentUrl }}" alt="Lampiran #{{ $displayCode }}"
-                         class="max-h-72 rounded-lg border object-contain transition group-hover:opacity-90">
-                    <span class="mt-1 block text-xs text-slate-500">Klik untuk membuka ukuran penuh</span>
-                  </a>
-                @else
-                  <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener"
-                     class="text-indigo-600 underline">Lihat lampiran ({{ strtoupper($ext) }})</a>
-                @endif
-              </div>
-            </div>
-          @endif
-
-          {{-- ====== DATA PELAPOR & DATA PELAKU DALAM CARD UTAMA ====== --}}
+          {{-- ====== DATA PELAPOR & DATA PELAKU ====== --}}
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {{-- Sub-card: Data Pelapor --}}
+            {{-- Data Pelapor --}}
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <h3 class="text-sm font-semibold text-slate-800">Data Pelapor</h3>
               <dl class="mt-3 space-y-3 text-sm">
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Nama</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $reporterName }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Nomor HP</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $reporterPhone }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Umur</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $reporterAge ?? '—' }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Disabilitas</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $disabilityDisplay }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Pekerjaan</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $reporterJob }}</dd>
-                </div>
+                @foreach ($reporterRows as [$label, $value])
+                  <div class="grid grid-cols-3 gap-2">
+                    <dt class="text-slate-500">{{ $label }}</dt>
+                    <dd class="col-span-2 font-medium text-slate-800">{{ $value }}</dd>
+                  </div>
+                @endforeach
 
                 <div class="my-2 h-px bg-slate-200"></div>
 
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Provinsi</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $provinceName }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Kota/Kab.</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $cityName }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Kecamatan</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $districtName }}</dd>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Alamat</dt>
-                  <dd class="col-span-2 font-medium text-slate-800 whitespace-pre-line">{{ $addressLine }}</dd>
-                </div>
+                @foreach ($locationRows as [$label, $value])
+                  <div class="grid grid-cols-3 gap-2">
+                    <dt class="text-slate-500">{{ $label }}</dt>
+                    <dd class="col-span-2 font-medium text-slate-800 {{ $label === 'Alamat' ? 'whitespace-pre-line' : '' }}">
+                      {{ $value }}
+                    </dd>
+                  </div>
+                @endforeach
               </dl>
             </div>
 
-            {{-- Sub-card: Data Pelaku --}}
+            {{-- Data Pelaku --}}
             <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <h3 class="text-sm font-semibold text-slate-800">Data Pelaku</h3>
               <dl class="mt-3 space-y-3 text-sm">
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Nama</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $perpetratorName }}</dd>
-                </div>
-                @if (!is_null($perpetratorAge))
+                @foreach ($perpetratorRows as [$label, $value])
                   <div class="grid grid-cols-3 gap-2">
-                    <dt class="text-slate-500">Umur</dt>
-                    <dd class="col-span-2 font-medium text-slate-800">{{ $perpetratorAge }}</dd>
+                    <dt class="text-slate-500">{{ $label }}</dt>
+                    <dd class="col-span-2 font-medium text-slate-800">{{ $value }}</dd>
                   </div>
-                @endif
-                <div class="grid grid-cols-3 gap-2">
-                  <dt class="text-slate-500">Pekerjaan</dt>
-                  <dd class="col-span-2 font-medium text-slate-800">{{ $perpetratorJob }}</dd>
-                </div>
+                @endforeach
               </dl>
             </div>
           </div>
@@ -253,7 +141,9 @@
 
           <div class="mt-6">
             <a href="{{ route('complaints.index') }}"
-               class="inline-flex items-center rounded-lg border px-3 py-1.5 text-sm hover:bg-slate-50">
+               class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300
+                      bg-white px-5 py-2.5 font-semibold text-slate-800 hover:bg-slate-50
+                      focus:outline-none focus:ring-2 focus:ring-purple-300">
               ← Kembali ke Riwayat
             </a>
           </div>

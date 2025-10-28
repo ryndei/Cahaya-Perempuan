@@ -20,33 +20,32 @@ class ComplaintController extends Controller
      */
     public function index(Request $request): View
     {
+        // Policy: admin bisa melihat daftar pengaduan
+        $this->authorize('viewAny', Complaint::class);
+
         // Kartu/stat ringkas di dashboard admin
         $counts = [
             'baru'   => Complaint::where('status', 'submitted')->count(),
             'aktif'  => Complaint::whereIn('status', ['submitted','in_review','follow_up'])->count(),
             'follow_up' => Complaint::where('status', 'follow_up')->count(),
-            // tanpa kolom closed_at → pakai updated_at sebagai tanggal selesai
             'selesai_bulan_ini' => Complaint::where('status','like','closed%')
                 ->whereBetween('updated_at', [now()->startOfMonth(), now()->endOfMonth()])
                 ->count(),
         ];
 
-        // Batasi per_page agar tidak terlalu besar
         $perPage = (int) $request->get('per_page', 10);
         $perPage = in_array($perPage, [10,20,50,100], true) ? $perPage : 10;
 
         // Build query + info dateField yang dipakai
         [$query, $dateField] = $this->buildFilteredQuery($request);
 
-        // Urutan: pakai dateField aktif, lalu id. Eager-load activity terakhir & causer.
         $complaints = $query
-            ->with(['lastStatusActivity.causer'])  // ⬅️ untuk "diubah oleh siapa & kapan"
+            ->with(['lastStatusActivity.causer'])
             ->orderByDesc($dateField)
             ->orderByDesc('id')
             ->paginate($perPage)
             ->withQueryString();
 
-        // Untuk mempertahankan nilai filter di view
         $q           = trim((string) $request->get('q', ''));
         $status      = $request->get('status');
         $statusGroup = $request->get('status_group');
@@ -64,22 +63,20 @@ class ComplaintController extends Controller
      */
     public function show(Complaint $complaint): View
     {
-        if (
-            $complaint->user_id !== Auth::id() &&
-            !(Auth::check() && Auth::user()->hasAnyRole(['admin', 'super-admin']))
-        ) {
-            abort(403);
-        }
+        // Policy: siapa pun admin yang berwenang boleh melihat
+        $this->authorize('view', $complaint);
 
         return view('dashboard.admin.complaints.show', compact('complaint'));
     }
 
     /**
-     * Update status pengaduan (pakai whitelist dari Model).
-     * Logging perubahan status ditangani oleh Spatie di Model (tidak di controller) → hindari duplikasi log.
+     * Update status pengaduan.
      */
     public function updateStatus(Request $request, Complaint $complaint): RedirectResponse
     {
+        // Policy: kontrol siapa yang boleh ubah status
+        $this->authorize('updateStatus', $complaint);
+
         $allowed = array_keys(Complaint::statusLabels());
 
         $data = $request->validate(
@@ -99,27 +96,23 @@ class ComplaintController extends Controller
     }
 
     /**
-     * Export CSV sesuai filter aktif (selalu konsisten dengan index).
+     * Export CSV sesuai filter aktif.
      */
     public function exportCsv(Request $request): StreamedResponse
     {
-        // Query hasil filter yang sama dengan index()
+        // Policy: hak khusus untuk ekspor
+        $this->authorize('export', Complaint::class);
+
         [$query, $dateField] = $this->buildFilteredQuery($request);
 
-        // Delimiter (default comma)
         $delimiter = $request->get('delimiter') === 'semicolon' ? ';' : ',';
-
-        // Label resmi status dari Model
         $statusLabels = Complaint::statusLabels();
-
         $filename = 'complaints-' . now()->format('Ymd_His') . '.csv';
 
         return response()->streamDownload(function () use ($query, $statusLabels, $delimiter) {
             $out = fopen('php://output', 'w');
-            // BOM UTF-8 agar rapi di Excel Windows
             fwrite($out, "\xEF\xBB\xBF");
 
-            // Header
             fputcsv($out, [
                 'Kode','Kategori','Deskripsi','Nama Pelapor','No. HP Pelapor','Umur Pelapor',
                 'Disabilitas (Ya/Tidak)','Pekerjaan Pelapor','Provinsi','Kab/Kota','Kecamatan',
@@ -127,7 +120,6 @@ class ComplaintController extends Controller
                 'Akun Pelapor','Email Akun','Status','Dibuat',
             ], $delimiter);
 
-            // Data
             $query->orderByDesc('id')->chunk(500, function ($rows) use ($out, $statusLabels, $delimiter) {
                 foreach ($rows as $c) {
                     fputcsv($out, [
@@ -163,30 +155,24 @@ class ComplaintController extends Controller
 
     /* ===================== Helpers ===================== */
 
-    /**
-     * Bangun query berdasarkan semua filter.
-     * @return array{0: Builder, 1: string}  [Builder $query, string $dateField]
-     */
     protected function buildFilteredQuery(Request $request): array
     {
         $q           = trim((string) $request->get('q', ''));
         $status      = $request->get('status');
-        $statusGroup = $request->get('status_group');   // "active" | "closed_all"
-        $statusLike  = $request->get('status_like');    // contoh: "closed%"
-        $from        = $request->get('from');           // yyyy-mm-dd
-        $to          = $request->get('to');             // yyyy-mm-dd
+        $statusGroup = $request->get('status_group');
+        $statusLike  = $request->get('status_like');
+        $from        = $request->get('from');
+        $to          = $request->get('to');
 
-        // dateField dinamis atau override manual (?date_field=created_at/updated_at/closed_at)
         $dateField = $this->determineDateField(
             $statusGroup,
             $statusLike,
             $status,
-            $request->get('date_field') // optional override
+            $request->get('date_field')
         );
 
         $query = Complaint::query()->with('user');
 
-        // Pencarian bebas
         if ($q !== '') {
             $query->where(function (Builder $w) use ($q) {
                 $w->where('description', 'like', "%{$q}%")
@@ -204,7 +190,6 @@ class ComplaintController extends Controller
             });
         }
 
-        // Filter status
         if ($statusGroup === 'active') {
             $query->whereIn('status', ['submitted','in_review','follow_up']);
         } elseif ($statusGroup === 'closed_all') {
@@ -215,7 +200,6 @@ class ComplaintController extends Controller
             $query->where('status', $status);
         }
 
-        // Rentang tanggal
         if (!empty($from)) {
             $query->whereDate($dateField, '>=', $from);
         }
@@ -226,17 +210,12 @@ class ComplaintController extends Controller
         return [$query, $dateField];
     }
 
-    /**
-     * Tentukan field tanggal yang dipakai filter & sorting.
-     */
     protected function determineDateField(?string $statusGroup, ?string $statusLike, ?string $status, ?string $override): string
     {
-        // Jika user memaksa override, hormati selama termasuk whitelist
         if (in_array($override, ['created_at', 'updated_at', 'closed_at'], true)) {
             return $override;
         }
 
-        // Jika filter yang dipakai keluarga "closed*" → gunakan updated_at (tanggal selesai)
         if (
             $statusGroup === 'closed_all' ||
             (!empty($statusLike) && Str::startsWith($statusLike, 'closed')) ||
@@ -245,13 +224,9 @@ class ComplaintController extends Controller
             return 'updated_at';
         }
 
-        // Default
         return 'created_at';
     }
 
-    /**
-     * Lindungi CSV dari formula injection di Excel (nilai yg mulai =, +, -, @).
-     */
     protected function csvSafe($value): string
     {
         $s = (string) ($value ?? '');
