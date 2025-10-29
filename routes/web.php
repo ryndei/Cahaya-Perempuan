@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 
+
 /*
 |--------------------------------------------------------------------------
 | Public Pages
@@ -99,6 +100,27 @@ Route::middleware(['auth','verified','role:admin|super-admin'])
         // Export CSV (mengikuti filter querystring yang sama)
         Route::get('/complaints/export/csv',           [AdminComplaintController::class, 'exportCsv'])
             ->name('complaints.export.csv');
+            
+        Route::get('/complaints/export/xlsx', [AdminComplaintController::class, 'exportXlsx'])
+    ->name('complaints.export.xlsx');
     });
+  
+/*Manajemen user Admin--------------------------------------------------------------------------
+|
+*/
+Route::middleware(['auth','verified','role:super-admin'])
+    ->prefix('admin/users')
+    ->as('admin.users.')
+    ->group(function () {
+        Route::get('/',                       [AdminUserController::class, 'index'])->name('index');
+        Route::get('/create',                 [AdminUserController::class, 'create'])->name('create');
+        Route::post('/',                      [AdminUserController::class, 'store'])->name('store');
+        Route::get('/{user}/edit',            [AdminUserController::class, 'edit'])->name('edit');
+        Route::patch('/{user}',               [AdminUserController::class, 'update'])->name('update');
+        Route::delete('/{user}',              [AdminUserController::class, 'destroy'])->name('destroy');
+        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('resetPassword');
+    });
+
+    
 
 require __DIR__.'/auth.php';

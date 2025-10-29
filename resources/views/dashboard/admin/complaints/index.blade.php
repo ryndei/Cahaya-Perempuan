@@ -14,25 +14,14 @@
         <p class="text-sm text-slate-600">Pantau semua laporan yang masuk, gunakan filter untuk mempercepat penelusuran.</p>
       </div>
 
-      <div class="flex items-center gap-2">
-        <a href="{{ route('admin.complaints.export.csv', request()->query()) }}"
-           class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M12 3v12m0 0l-4-4m4 4l4-4M5 20h14"/>
-          </svg>
-          <span class="font-medium">Export CSV</span>
-          <span class="opacity-80">(,)</span>
-        </a>
-
-        <a href="{{ route('admin.complaints.export.csv', array_merge(request()->query(), ['delimiter' => 'semicolon'])) }}"
-           class="inline-flex items-center gap-2 rounded-lg border border-indigo-600 bg-white px-4 py-2 text-indigo-700 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9l-6-6z"/>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M14 3v6h6"/>
-          </svg>
-          <span class="font-medium">CSV (;)</span>
-        </a>
-      </div>
+      {{-- Export Excel --}}
+      <a
+        href="{{ route('admin.complaints.export.xlsx', request()->query()) }}"
+        class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-2 text-white font-semibold hover:bg-emerald-700"
+        title="Export data sesuai filter aktif ke Excel"
+      >
+        Export Excel
+      </a>
     </div>
 
     @if (session('status'))
@@ -45,28 +34,6 @@
         {{ session('success') }}
       </div>
     @endif
-
-    @php
-      $statusLabels = \App\Models\Complaint::statusLabels();
-      $statusClasses = [
-        'submitted'        => 'bg-slate-100 text-slate-700',
-        'in_review'        => 'bg-amber-100 text-amber-800',
-        'follow_up'        => 'bg-blue-100 text-blue-800',
-        'closed'           => 'bg-emerald-100 text-emerald-800',
-        'closed_pa'        => 'bg-emerald-100 text-emerald-800',
-        'closed_pn'        => 'bg-teal-100 text-teal-800',
-        'closed_mediation' => 'bg-lime-100 text-lime-800',
-      ];
-      $shortStatusLabels = [
-        'submitted'        => 'Diajukan',
-        'in_review'        => 'Ditinjau',
-        'follow_up'        => 'Ditindaklanjuti',
-        'closed'           => 'Selesai',
-        'closed_pa'        => 'Selesai — PA',
-        'closed_pn'        => 'Selesai — PN',
-        'closed_mediation' => 'Selesai — Mediasi',
-      ];
-    @endphp
 
     {{-- Filter & Search --}}
     <form method="GET" action="{{ route('admin.complaints.index') }}" class="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">
@@ -123,7 +90,6 @@
             <thead class="sticky top-0 z-10 bg-slate-50/95 backdrop-blur border-b border-slate-200">
               <tr class="text-slate-600">
                 <th class="w-14 px-4 py-3 text-left text-xs font-semibold tracking-wide">No</th>
-                {{-- 👉 Diperkecil agar kolom lain punya ruang --}}
                 <th class="w-[32rem] px-4 py-3 text-left text-xs font-semibold tracking-wide">Deskripsi</th>
                 <th class="w-56 px-4 py-3 text-left text-xs font-semibold tracking-wide">Pelapor</th>
                 <th class="w-44 px-4 py-3 text-left text-xs font-semibold tracking-wide">Status</th>
@@ -138,7 +104,6 @@
                 $fullStatus  = $statusLabels[$c->status] ?? \Illuminate\Support\Str::headline($c->status);
                 $shortStatus = $shortStatusLabels[$c->status] ?? $fullStatus;
 
-                // ⬇️ info pengubah terakhir (pastikan controller eager-load: with(['lastStatusActivity.causer']))
                 $changer    = optional($c->lastStatusActivity?->causer)->name;
                 $changedAt  = optional($c->lastStatusActivity?->created_at);
                 $changedTxt = $changedAt ? $changedAt->diffForHumans() : null;
@@ -155,7 +120,6 @@
                     #{{ $c->code ?? $c->id }} —
                     <span class="text-slate-700">{{ \Illuminate\Support\Str::limit($c->category ?? 'Tanpa kategori', 56) }}</span>
                   </div>
-                  {{-- batas lebar konten deskripsi supaya tidak mendorong kolom lain --}}
                   <div class="mt-0.5 text-slate-500 break-words max-w-[32rem]">
                     {{ \Illuminate\Support\Str::limit($c->description, 140) }}
                   </div>
@@ -167,7 +131,6 @@
                 </td>
 
                 <td class="px-4 py-3 align-top">
-                  {{-- Badge status + info pengubah terakhir --}}
                   <div class="whitespace-nowrap">
                     <span
                       class="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium leading-5 {{ $badgeClass }}"
@@ -196,7 +159,6 @@
                       @csrf
                       @method('PATCH')
 
-                      {{-- perkecil lebar select agar muat di kolom Aksi --}}
                       <select name="status"
                               class="w-44 rounded-md border-slate-300 text-xs focus:border-indigo-500 focus:ring-indigo-500">
                         @foreach ($statusLabels as $val => $label)
@@ -238,7 +200,6 @@
         @endphp
 
         <div class="rounded-xl border border-slate-200 bg-white p-4">
-          {{-- grid 1fr auto untuk tombol Lihat --}}
           <div class="grid grid-cols-[1fr_auto] items-start gap-3">
             <div class="min-w-0">
               <div class="text-sm font-semibold text-slate-900 break-words">
@@ -260,7 +221,6 @@
                   </span>
                 </div>
 
-                {{-- Info pengubah terakhir (mobile) --}}
                 @if($changer || $changedAt)
                   <div class="text-[11px] text-slate-500 leading-4">
                     @if($changer) oleh <span class="font-medium text-slate-700">{{ $changer }}</span>@endif
@@ -281,7 +241,6 @@
             </a>
           </div>
 
-          {{-- Quick update status (mobile) --}}
           <form class="mt-3" method="POST" action="{{ route('admin.complaints.updateStatus', $c) }}"
                 onsubmit="return confirm('Ubah status laporan ini?')">
             @csrf

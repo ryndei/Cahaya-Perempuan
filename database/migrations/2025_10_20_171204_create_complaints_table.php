@@ -4,68 +4,72 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
-        Schema::create('complaints', function (Blueprint $t) {
-            $t->id();
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('complaints', function (Blueprint $table) {
+            $table->id();
 
-            // Relasi user yang membuat pengaduan
-            $t->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('code', 40)->unique();
 
-            // Kode unik (mis. CP-YYMMDD-ABCDE)
-            $t->string('code')->unique();
+            // PII terenkripsi (pakai $casts di Model)
+            $table->text('reporter_name')->nullable();
+            $table->text('reporter_phone')->nullable();
+            $table->text('reporter_address')->nullable();
+            $table->text('reporter_job')->nullable();
+            $table->char('reporter_phone_hash', 64)->nullable()->index('idx_complaints_rphash');
 
-            /**
-             * PII / data sensitif (TEXT agar aman untuk ciphertext).
-             * Akan DIENKRIPSI di Model via $casts = ['encrypted' => ...].
-             */
-            $t->text('reporter_name')->nullable();       // encrypted
-            $t->text('reporter_phone')->nullable();      // encrypted
-            $t->text('reporter_address')->nullable();    // encrypted
-            $t->text('reporter_job')->nullable();        // encrypted
+            // Umur asli (terenkripsi) + bucket untuk agregasi
+            $table->text('reporter_age')->nullable();
+            $table->unsignedTinyInteger('reporter_age_bucket')->nullable()->index('idx_complaints_age_bucket');
 
-            // Blind index untuk pencarian exact match nomor telepon (tanpa buka PII)
-            $t->char('reporter_phone_hash', 64)->nullable()->index();
+            $table->boolean('reporter_is_disability')->nullable()->comment('null=unknown, 0=no, 1=yes');
 
-            // Umur pelapor → simpan terenkripsi + bucket polos untuk agregasi/filter
-            $t->text('reporter_age')->nullable();              // encrypted (isi mentah)
-            $t->unsignedTinyInteger('reporter_age_bucket')->nullable()->index(); // 1..7 (lihat Model)
-
-            // Disabilitas: tri-state (null=unknown, 0=no, 1=yes) — polos untuk filter
-            $t->boolean('reporter_is_disability')->nullable()->comment('null=unknown, 0=no, 1=yes');
-
-            // Lokasi terstruktur + nama wilayah (polos untuk filter/sort)
-            $t->string('province_code', 10)->nullable()->index();
-            $t->string('province_name', 100)->nullable();
-            $t->string('regency_code', 10)->nullable()->index();
-            $t->string('regency_name', 100)->nullable();
-            $t->string('district_code', 10)->nullable()->index();
-            $t->string('district_name', 100)->nullable();
+            // Lokasi
+            $table->string('province_code', 10)->nullable()->index('idx_complaints_prov_code');
+            $table->string('province_name', 100)->nullable();
+            $table->string('regency_code', 10)->nullable()->index('idx_complaints_reg_code');
+            $table->string('regency_name', 100)->nullable();
+            $table->string('district_code', 10)->nullable()->index('idx_complaints_dist_code');
+            $table->string('district_name', 100)->nullable();
 
             // Data pelaku (sensitif)
-            $t->text('perpetrator_name')->nullable();   // encrypted
-            $t->text('perpetrator_job')->nullable();    // encrypted
-            $t->text('perpetrator_age')->nullable();    // encrypted
-            $t->unsignedTinyInteger('perpetrator_age_bucket')->nullable()->index();
+            $table->text('perpetrator_name')->nullable();
+            $table->text('perpetrator_job')->nullable();
+            $table->text('perpetrator_age')->nullable();
+            $table->unsignedTinyInteger('perpetrator_age_bucket')->nullable()->index('idx_complaints_p_age_bucket');
 
-            // Kategori (opsional, polos)
-            $t->string('category')->nullable();
+            // Kategori & konten
+            $table->string('category', 120)->nullable()->index('idx_complaints_category');
+            $table->text('description');
+            $table->text('admin_note')->nullable();
 
-            // Narasi & catatan internal (sensitif → encrypted)
-            $t->text('description');                    // encrypted
-            $t->text('admin_note')->nullable();         // encrypted
+            // Status & closed_at
+            $table->string('status', 30)->default('submitted')->index('idx_complaints_status');
+            $table->timestamp('closed_at')->nullable()->index('idx_complaints_closed_at');
 
-            // Lampiran: simpan PATH saja (file-nya disimpan di disk privat)
-            $t->string('attachment_path')->nullable();
+            // Kolom operasional (SLA/assign/pin)
+            $table->foreignId('assigned_admin_id')->nullable()->constrained('users')->nullOnDelete()->index();
+            $table->unsignedTinyInteger('priority')->default(2)->index(); // 1=High,2=Normal,3=Low
+            $table->timestamp('due_at')->nullable()->index();
+            $table->timestamp('first_response_at')->nullable()->index();
+            $table->timestamp('pinned_until')->nullable()->index();
 
-            // Status untuk workflow (polos untuk filter/report)
-            $t->string('status', 30)->default('submitted')->index(); // submitted|in_review|follow_up|closed|...
+            $table->timestamps();
 
-            $t->timestamps();
+            // Index komposit umum
+            $table->index(['created_at'], 'idx_complaints_created_at');
+            $table->index(['updated_at'], 'idx_complaints_updated_at');
+            $table->index(['user_id', 'status', 'created_at'], 'idx_complaints_user_status_created');
+            $table->index(['status', 'updated_at'], 'idx_complaints_status_updated');
+            $table->index(['province_code', 'regency_code', 'district_code'], 'idx_complaints_location_codes');
         });
     }
 
-    public function down(): void {
+    public function down(): void
+    {
         Schema::dropIfExists('complaints');
     }
 };

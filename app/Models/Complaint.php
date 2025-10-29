@@ -2,86 +2,129 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Complaint extends Model
 {
     use HasFactory, LogsActivity;
 
-    /** Status constants */
-    public const STATUS_SUBMITTED         = 'submitted';
-    public const STATUS_IN_REVIEW         = 'in_review';
-    public const STATUS_FOLLOW_UP         = 'follow_up';
-    public const STATUS_CLOSED            = 'closed';
-    public const STATUS_CLOSED_PA         = 'closed_pa';
-    public const STATUS_CLOSED_PN         = 'closed_pn';
-    public const STATUS_CLOSED_MEDIATION  = 'closed_mediation';
+    /* =========================
+     |  Konstanta Status
+     |=========================*/
+    public const STATUS_SUBMITTED        = 'submitted';
+    public const STATUS_IN_REVIEW        = 'in_review';
+    public const STATUS_FOLLOW_UP        = 'follow_up';
+    public const STATUS_CLOSED           = 'closed';
+    public const STATUS_CLOSED_PA        = 'closed_pa';
+    public const STATUS_CLOSED_PN        = 'closed_pn';
+    public const STATUS_CLOSED_MEDIATION = 'closed_mediation';
 
-    /**
-     * KEAMANAN:
-     * - user_id & code DIHAPUS dari fillable agar tidak bisa di-mass assign.
-     * - Nilai tsb. dipaksa di event creating (lihat booted()).
-     */
+    /* =========================
+     |  Mass Assignment
+     |  (user_id & code di-set otomatis)
+     |=========================*/
     protected $fillable = [
-        // 'user_id','code',
-        'category','description','attachment_path','status','admin_note',
-        'reporter_name','reporter_phone','reporter_is_disability','reporter_age','reporter_job',
-        'reporter_age_bucket','reporter_phone_hash',
-        'province_code','province_name','regency_code','regency_name','district_code','district_name',
+        // 'user_id', 'code',
+        'category',
+        'description',
+        'status',
+        'admin_note',
+
+        'reporter_name',
+        'reporter_phone',
+        'reporter_is_disability',
+        'reporter_age',
+        'reporter_job',
+        'reporter_age_bucket',
+        'reporter_phone_hash',
+
+        'province_code',
+        'province_name',
+        'regency_code',
+        'regency_name',
+        'district_code',
+        'district_name',
         'reporter_address',
-        'perpetrator_name','perpetrator_job','perpetrator_age','perpetrator_age_bucket',
+
+        'perpetrator_name',
+        'perpetrator_job',
+        'perpetrator_age',
+        'perpetrator_age_bucket',
+
+        // kolom operasional (opsional, jika ada di migration)
+        'assigned_admin_id',
+        'priority',
+        'due_at',
+        'first_response_at',
+        'pinned_until',
     ];
 
-    /** Casts (PII terenkripsi) */
+    /* =========================
+     |  Casts
+     |=========================*/
     protected $casts = [
-        // Encrypted (kolom harus TEXT)
-        'reporter_name'        => 'encrypted',
-        'reporter_phone'       => 'encrypted',
-        'reporter_address'     => 'encrypted',
-        'reporter_job'         => 'encrypted',
-        'reporter_age'         => 'encrypted',
-        'perpetrator_name'     => 'encrypted',
-        'perpetrator_job'      => 'encrypted',
-        'perpetrator_age'      => 'encrypted',
-        'description'          => 'encrypted',
-        'admin_note'           => 'encrypted',
+        // terenkripsi (kolom TEXT)
+        'reporter_name'    => 'encrypted',
+        'reporter_phone'   => 'encrypted',
+        'reporter_address' => 'encrypted',
+        'reporter_job'     => 'encrypted',
+        'reporter_age'     => 'encrypted',
+        'perpetrator_name' => 'encrypted',
+        'perpetrator_job'  => 'encrypted',
+        'perpetrator_age'  => 'encrypted',
+        'description'      => 'encrypted',
+        'admin_note'       => 'encrypted',
 
-        // Non-encrypted
-        'reporter_is_disability'   => 'boolean',
-        'reporter_age_bucket'      => 'integer',
-        'perpetrator_age_bucket'   => 'integer',
+        // non-encrypted
+        'reporter_is_disability' => 'boolean',
+        'reporter_age_bucket'    => 'integer',
+        'perpetrator_age_bucket' => 'integer',
+
+        // tanggal
+        'closed_at'         => 'datetime',
+        'due_at'            => 'datetime',
+        'first_response_at' => 'datetime',
+        'pinned_until'      => 'datetime',
     ];
 
+    /* =========================
+     |  Default Attributes
+     |=========================*/
     protected $attributes = [
         'status' => self::STATUS_SUBMITTED,
     ];
 
+    /* =========================
+     |  Events
+     |=========================*/
     protected static function booted(): void
     {
-        // Paksa set user_id & code (abaikan input)
+        // Set otomatis user_id & code unik saat creating
         static::creating(function (Complaint $c) {
-            $c->user_id = Auth::id();
+            // Kalau dari job/seed dan tidak ada session, biarkan null atau hormati nilai yang sudah diisi
+            $c->user_id = $c->user_id ?? Auth::id();
 
-            // Retry generate code unik (hindari collision pada unique index)
+            // Generate code unik: CP-YYMMDD-ABCDE (retry 5x)
             $date = now()->format('ymd');
-            for ($i=0; $i<5; $i++) {
+            for ($i = 0; $i < 5; $i++) {
                 $candidate = 'CP-'.$date.'-'.strtoupper(Str::random(5));
-                if (!static::where('code', $candidate)->exists()) {
+                if (! static::where('code', $candidate)->exists()) {
                     $c->code = $candidate;
                     break;
                 }
             }
-            $c->code ??= 'CP-'.$date.'-'.strtoupper(Str::uuid()->toString());
+            // Fallback: random 9 char (AMAN terhadap limit varchar(40); hindari UUID yang bisa > 40)
+            $c->code ??= 'CP-'.$date.'-'.strtoupper(Str::random(9));
         });
 
-        // Normalisasi sebelum terenkripsi ke DB
+        // Normalisasi dan turunan sebelum simpan
         static::saving(function (Complaint $m) {
-            // Blind index nomor telepon pelapor
+            // Blind index nomor telepon (pakai digit-only)
             if ($m->reporter_phone) {
                 $digits = preg_replace('/\D+/', '', (string) $m->reporter_phone);
                 $m->reporter_phone_hash = $digits ? hash('sha256', $digits) : null;
@@ -89,37 +132,57 @@ class Complaint extends Model
                 $m->reporter_phone_hash = null;
             }
 
-            // Bucket umur (1..7) untuk analitik tanpa membuka nilai asli
+            // Bucket umur (tanpa membuka nilai terenkripsi ke laporan)
             $m->reporter_age_bucket    = self::makeAgeBucket($m->reporter_age);
             $m->perpetrator_age_bucket = self::makeAgeBucket($m->perpetrator_age);
         });
+
+        // Auto set/unset closed_at ketika status berubah
+        static::updating(function (Complaint $m) {
+            if ($m->isDirty('status')) {
+                $closed = [
+                    self::STATUS_CLOSED,
+                    self::STATUS_CLOSED_PA,
+                    self::STATUS_CLOSED_PN,
+                    self::STATUS_CLOSED_MEDIATION,
+                ];
+
+                if (in_array($m->status, $closed, true)) {
+                    $m->closed_at ??= now();
+                } else {
+                    if (in_array($m->getOriginal('status'), $closed, true)) {
+                        $m->closed_at = null; // opsional
+                    }
+                }
+            }
+        });
     }
 
-    /**
-     * Konversi umur (string terenkripsi sebelum tulis) menjadi bucket 1..7:
-     * 1: <=17, 2: 18-24, 3: 25-34, 4: 35-44, 5: 45-54, 6: 55-64, 7: >=65
-     */
+    /* =========================
+     |  Util: Bucket Umur (1..7)
+     |  1: <=17, 2: 18-24, 3: 25-34, 4: 35-44,
+     |  5: 45-54, 6: 55-64, 7: >=65
+     |=========================*/
     public static function makeAgeBucket($agePlain): ?int
     {
         if ($agePlain === null || $agePlain === '') return null;
-
-        // agePlain belum terenkripsi saat saving; user bisa isi "20", " 34 ", dsb.
         $n = (int) preg_replace('/\D+/', '', (string) $agePlain);
         if ($n <= 0) return null;
 
         return match (true) {
-            $n <= 17         => 1,
-            $n <= 24         => 2,
-            $n <= 34         => 3,
-            $n <= 44         => 4,
-            $n <= 54         => 5,
-            $n <= 64         => 6,
-            default          => 7,
+            $n <= 17 => 1,
+            $n <= 24 => 2,
+            $n <= 34 => 3,
+            $n <= 44 => 4,
+            $n <= 54 => 5,
+            $n <= 64 => 6,
+            default  => 7,
         };
     }
 
-    /* ===================== Relasi ===================== */
-
+    /* =========================
+     |  Relasi
+     |=========================*/
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -138,8 +201,9 @@ class Complaint extends Model
             ->latestOfMany();
     }
 
-    /* =============== Label & Accessor bantu =============== */
-
+    /* =========================
+     |  Label & Accessor
+     |=========================*/
     public static function statusLabels(): array
     {
         return [
@@ -169,8 +233,9 @@ class Complaint extends Model
         return $this->lastStatusActivity?->created_at;
     }
 
-    /* ===================== Scopes ===================== */
-
+    /* =========================
+     |  Scopes
+     |=========================*/
     public function scopeClosed($q)
     {
         return $q->whereIn('status', [
@@ -191,11 +256,12 @@ class Complaint extends Model
         ]);
     }
 
-    /* ===================== Activity Log ===================== */
-
+    /* =========================
+     |  Activity Log
+     |=========================*/
     public function getActivitylogOptions(): LogOptions
     {
-        // Hanya log "status" agar PII (admin_note, dsb.) TIDAK masuk log.
+        // Log hanya kolom 'status' agar PII aman
         return LogOptions::defaults()
             ->useLogName('complaint')
             ->logOnly(['status'])
@@ -230,9 +296,11 @@ class Complaint extends Model
         ]);
     }
 
-
-        public function getRouteKeyName(): string
+    /* =========================
+     |  Router Binding
+     |=========================*/
+    public function getRouteKeyName(): string
     {
-    return 'code';
+        return 'code';
     }
 }

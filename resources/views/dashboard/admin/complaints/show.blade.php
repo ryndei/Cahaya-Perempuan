@@ -27,70 +27,6 @@
     }
   </style>
 
-  @php
-    // Label status
-    $statusLabels = \App\Models\Complaint::statusLabels();
-
-    // Warna badge
-    $statusClasses = [
-      'submitted'          => 'bg-slate-100 text-slate-800',
-      'in_review'          => 'bg-amber-100 text-amber-800',
-      'follow_up'          => 'bg-blue-100 text-blue-800',
-      'closed'             => 'bg-emerald-100 text-emerald-800',
-      'closed_pa'          => 'bg-emerald-100 text-emerald-800',
-      'closed_pn'          => 'bg-teal-100 text-teal-800',
-      'closed_mediation'   => 'bg-lime-100 text-lime-800',
-    ];
-    $badge = $statusClasses[$complaint->status] ?? 'bg-slate-100 text-slate-800';
-
-    // Tanggal (pakai singkatan bulan "Jan, Feb, Mar, ...")
-    $createdAtText = optional($complaint->created_at)?->translatedFormat('d M Y H:i') ?? '—';
-    $updatedAtText = optional($complaint->updated_at)?->translatedFormat('d M Y H:i') ?? '—';
-
-    // Disabilitas
-    $disabilityText = is_null($complaint->reporter_is_disability)
-      ? '—'
-      : ($complaint->reporter_is_disability ? 'Ya' : 'Tidak');
-
-    // Lokasi ringkas
-    $lokasiRingkas = collect([$complaint->district_name, $complaint->regency_name, $complaint->province_name])
-      ->filter()->implode(', ');
-
-    // Lampiran
-    $hasAttachment = filled($complaint->attachment_path ?? null);
-    $attachmentUrl = $hasAttachment ? asset('storage/'.$complaint->attachment_path) : null;
-    $ext = $hasAttachment ? strtolower(pathinfo($complaint->attachment_path, PATHINFO_EXTENSION)) : null;
-    $isImage = $hasAttachment && in_array($ext, ['jpg','jpeg','png','gif','webp']);
-
-    // Label status final
-    $statusLabel = method_exists($complaint, 'getStatusLabelAttribute')
-      ? $complaint->status_label
-      : ($statusLabels[$complaint->status] ?? ucfirst(str_replace('_',' ', $complaint->status)));
-
-    // ====== INFO PENGUBAH TERAKHIR (AMBIL DARI ACTIVITYLOG) ======
-    // Prefer relasi lastStatusActivity (kalau ada); fallback ke aktivitas terakhir "status_updated" / "updated"
-    $lastAct = null;
-    if (method_exists($complaint, 'lastStatusActivity')) {
-      $lastAct = $complaint->lastStatusActivity; // bisa jadi null
-    }
-    if (!$lastAct) {
-      $lastAct = $complaint->activities()
-        ->whereIn('event', ['status_updated','updated'])
-        ->latest('id')
-        ->first();
-    }
-    $lastChanger = optional($lastAct?->causer)->name ?? optional($lastAct?->causer)->email;
-    $lastChangedAt = optional($lastAct?->created_at);
-    $lastChangedAtText = $lastChangedAt ? $lastChangedAt->translatedFormat('d M Y H:i') : null;
-    $lastChangedDiff   = $lastChangedAt ? $lastChangedAt->diffForHumans() : null;
-
-    // (Opsional) Riwayat status singkat
-    $history = $complaint->activities()
-      ->whereIn('event', ['status_updated','updated'])
-      ->latest('id')
-      ->take(5)
-      ->get();
-  @endphp
 
   <div class="mx-auto max-w-6xl p-6 space-y-6">
     @if (session('status'))
@@ -164,24 +100,6 @@
               {{ $complaint->description }}
             </dd>
           </div>
-
-          @if($hasAttachment)
-            <div>
-              <dt class="font-medium text-slate-700">Lampiran</dt>
-              <dd class="text-slate-800">
-                @if($isImage)
-                  <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener" class="group inline-block">
-                    <img src="{{ $attachmentUrl }}" alt="Lampiran" class="max-h-56 rounded border object-contain group-hover:opacity-90">
-                    <span class="mt-1 block text-xs text-slate-500">Klik untuk membuka ukuran penuh</span>
-                  </a>
-                @else
-                  <a href="{{ $attachmentUrl }}" target="_blank" rel="noopener" class="text-indigo-600 underline break-all">
-                    Lihat lampiran ({{ strtoupper($ext) }})
-                  </a>
-                @endif
-              </dd>
-            </div>
-          @endif
         </dl>
       </div>
 
