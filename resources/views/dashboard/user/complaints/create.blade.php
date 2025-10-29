@@ -4,7 +4,6 @@
   </x-slot>
 
   @php
-    // Nilai default (agar ringkas dipakai di atribut value/selected)
     $oldProvince  = old('province_code');
     $oldRegency   = old('regency_code');
     $oldDistrict  = old('district_code');

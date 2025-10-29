@@ -2,29 +2,33 @@
 
 use Illuminate\Support\Facades\Route;
 
+// Profile
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\ComplaintController;
 
-// Admin
+// ================= USER controllers =================
+use App\Http\Controllers\User\DashboardController as UserDashboardController;
+use App\Http\Controllers\User\ComplaintController as UserComplaintController;
+
+// ================= ADMIN controllers ================
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\DashboardController;
+
 /*
 |--------------------------------------------------------------------------
 | Public Pages
 |--------------------------------------------------------------------------
 */
-
-
 Route::get('/', fn () => view('welcome'));
 
 Route::get('/profil-lembaga', fn () => view('profil-lembaga'))->name('profil-lembaga');
 Route::get('/kontak-kami', fn () => view('kontak-kami'))->name('kontak-kami');
 Route::get('/cara-melapor-landing', fn () => view('cara-melapor-landing'))->name('cara-melapor-landing');
 Route::get('/syarat-layanan', fn () => view('syarat-layanan'))->name('syarat-layanan');
+
 /*
 |--------------------------------------------------------------------------
-| Static pages 
+| Static pages (butuh login)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
@@ -46,10 +50,10 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| Dashboard router (auto-redirect by role)
+| USER Dashboard (auto-redirect by role)
 |--------------------------------------------------------------------------
 */
-Route::get('/dashboard', fn () => view('dashboard.user.home'))
+Route::get('/dashboard', [UserDashboardController::class, 'index'])
     ->middleware(['auth','verified','redirect.dashboard.byrole'])
     ->name('dashboard');
 
@@ -59,8 +63,8 @@ Route::get('/dashboard', fn () => view('dashboard.user.home'))
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth','verified','role:admin|super-admin'])->group(function () {
-    // Admin home pakai controller supaya bisa hitung statistik
-    Route::get('/admin', DashboardController::class)->name('admin.dashboard');
+    // Admin home (invokable controller)
+    Route::get('/admin', AdminDashboardController::class)->name('admin.dashboard');
 
     // (opsional) halaman statis lain
     Route::get('/admin.manajemen-pengaduan', fn () => view('dashboard.admin.manajemen-pengaduan'))
@@ -69,22 +73,14 @@ Route::middleware(['auth','verified','role:admin|super-admin'])->group(function 
 
 /*
 |--------------------------------------------------------------------------
-| USER – Pengaduan 
+| USER – Pengaduan
 |--------------------------------------------------------------------------
 */
-
 Route::middleware(['auth','verified'])->group(function () {
-    // Pakai code sebagai route key untuk mencegah penebakan ID numerik
-    Route::get('/pengaduan',                          [ComplaintController::class, 'index'])->name('complaints.index');
-    Route::get('/pengaduan/buat',                     [ComplaintController::class, 'create'])->name('complaints.create');
-
-    // Tambahkan rate limit khusus untuk mencegah spam pengajuan
-    Route::post('/pengaduan',                         [ComplaintController::class, 'store'])
-        ->middleware('throttle:complaints')
-        ->name('complaints.store');
-
-    // Binding by code: pastikan Model Complaint override getRouteKeyName() -> 'code'
-    Route::get('/pengaduan/{complaint:code}',         [ComplaintController::class, 'show'])->name('complaints.show');
+    Route::get('/pengaduan',                  [UserComplaintController::class, 'index'])->name('complaints.index');
+    Route::get('/pengaduan/buat',             [UserComplaintController::class, 'create'])->name('complaints.create');
+    Route::post('/pengaduan',                 [UserComplaintController::class, 'store'])->middleware('throttle:complaints')->name('complaints.store');
+    Route::get('/pengaduan/{complaint:code}', [UserComplaintController::class, 'show'])->name('complaints.show');
 });
 
 /*
@@ -96,32 +92,13 @@ Route::middleware(['auth','verified','role:admin|super-admin'])
     ->prefix('admin')
     ->as('admin.')
     ->group(function () {
-        Route::get('/complaints',                             [AdminComplaintController::class, 'index'])->name('complaints.index');
-        Route::get('/complaints/{complaint}',                 [AdminComplaintController::class, 'show'])->name('complaints.show');
-        Route::patch('/complaints/{complaint}/status',        [AdminComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
+        Route::get('/complaints',                      [AdminComplaintController::class, 'index'])->name('complaints.index');
+        Route::get('/complaints/{complaint}',          [AdminComplaintController::class, 'show'])->name('complaints.show');
+        Route::patch('/complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 
-        // Export CSV (menggunakan filter query string yang sama)
-        Route::get('/complaints/export/csv',                  [AdminComplaintController::class, 'exportCsv'])
+        // Export CSV (mengikuti filter querystring yang sama)
+        Route::get('/complaints/export/csv',           [AdminComplaintController::class, 'exportCsv'])
             ->name('complaints.export.csv');
-    });
-
-/*
-|--------------------------------------------------------------------------
-| ADMIN – Manajemen User (khusus super-admin)
-|--------------------------------------------------------------------------
-| Hanya super-admin yang boleh melihat & memanipulasi user.
-*/
-Route::middleware(['auth','verified','role:super-admin'])
-    ->prefix('admin/users')
-    ->as('admin.users.')
-    ->group(function () {
-        Route::get('/',                       [AdminUserController::class, 'index'])->name('index');
-        Route::get('/create',                 [AdminUserController::class, 'create'])->name('create');
-        Route::post('/',                      [AdminUserController::class, 'store'])->name('store');
-        Route::get('/{user}/edit',            [AdminUserController::class, 'edit'])->name('edit');
-        Route::patch('/{user}',               [AdminUserController::class, 'update'])->name('update');
-        Route::delete('/{user}',              [AdminUserController::class, 'destroy'])->name('destroy');
-        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('resetPassword');
     });
 
 require __DIR__.'/auth.php';
