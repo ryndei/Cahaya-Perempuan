@@ -13,6 +13,12 @@
         'icon'   => 'M4 4h16v14H4z M8 22h8',
         'active' => request()->routeIs('admin.complaints*'),
       ],
+      [
+        'label'  => 'Manajemen Berita',
+        'href'   => route('admin.news.index'),
+        'icon'   => 'M4 4h16v14H4z M8 22h8',
+        'active' => request()->routeIs('admin.news.index*'),
+      ],
     ];
 
     // Tambah menu "Manajemen User" hanya untuk super-admin
@@ -25,6 +31,7 @@
         'active' => request()->routeIs('admin.users*'),
       ];
     }
+
   @endphp
 
   @foreach($menu as $m)

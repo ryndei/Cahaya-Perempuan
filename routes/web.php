@@ -1,7 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-
+use App\Models\News;
 // Profile
 use App\Http\Controllers\ProfileController;
 
@@ -13,7 +13,7 @@ use App\Http\Controllers\User\ComplaintController as UserComplaintController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-
+use App\Http\Controllers\Admin\NewsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -120,6 +120,25 @@ Route::middleware(['auth','verified','role:super-admin'])
         Route::delete('/{user}',              [AdminUserController::class, 'destroy'])->name('destroy');
         Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('resetPassword');
     });
+
+Route::middleware(['auth','verified','can:news.manage'])
+    ->prefix('admin')->as('admin.')
+    ->group(function () {
+        Route::resource('news', NewsController::class)->except(['show']);
+    });
+
+// Publik (list & detail)
+
+
+Route::get('/berita', function () {
+    $items = News::published()->latest('published_at')->paginate(9);
+    return view('news.index', compact('items'));
+})->name('news.index');
+
+Route::get('/berita/{news:slug}', function (News $news) {
+    abort_unless($news->status === 'published', 404);
+    return view('news.show', compact('news'));
+})->name('news.show');    
 
     
 

@@ -13,7 +13,7 @@
   <style>[x-cloak]{ display:none !important; }</style>
 </head>
 <body class="min-h-screen bg-purple-50 antialiased">
-  
+@section('content')
 
   <!-- Biarkan halaman anak yang mengatur kartu/brand -->
   <main class="min-h-screen flex items-center justify-center px-4 py-16">
