@@ -14,10 +14,10 @@
         'active' => request()->routeIs('admin.complaints*'),
       ],
       [
-        'label'  => 'Manajemen Berita',
+        'label'  => 'Manajemen Kegiatan',
         'href'   => route('admin.news.index'),
-        'icon'   => 'M4 4h16v14H4z M8 22h8',
-        'active' => request()->routeIs('admin.news.index*'),
+        'icon'   => 'M4 4h16v14H4z M6 7h4v6H6z M12 7h6 M12 11h6 M12 15h6',
+        'active' => request()->routeIs('admin.news*'),
       ],
     ];
 

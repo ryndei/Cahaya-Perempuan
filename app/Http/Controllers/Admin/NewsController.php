@@ -8,79 +8,116 @@ use App\Http\Requests\UpdateNewsRequest;
 use App\Models\News;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
+use Intervention\Image\Laravel\Facades\Image;
+use Intervention\Image\Encoders\WebpEncoder;
 
 class NewsController extends Controller
 {
+    private const PAGINATION_LIMIT = 15;
+    private const CACHE_VERSION_KEY = 'news_cache_ver';
+
     public function __construct()
     {
-        $this->middleware(['auth','verified','can:news.manage']);
+        $this->middleware(['auth', 'verified', 'can:news.manage']);
     }
 
     public function index(Request $request): View
     {
-        $q = trim((string)$request->get('q',''));
+        $q      = trim((string) $request->get('q', ''));
+        $status = $request->get('status', '');
+        $page   = (int) $request->get('page', 1);
 
-        $items = News::query()
-            ->when($q !== '', fn($w) => $w->where('title','like',"%{$q}%")->orWhere('excerpt','like',"%{$q}%"))
-            ->orderByDesc('published_at')->orderByDesc('id')
-            ->paginate(15)->withQueryString();
+        // Versioned cache key (driver-agnostic, tidak perlu tagging)
+        $ver = Cache::rememberForever(self::CACHE_VERSION_KEY, fn () => 1);
+        $key = "news:v{$ver}:q:{$q}:st:{$status}:p:{$page}";
 
-        return view('dashboard.admin.news.index', compact('items','q'));
+        $items = Cache::remember(
+            $key,
+            app()->isProduction() ? 300 : 0,
+            function () use ($q, $status) {
+                return News::query()
+                    ->with('user:id,name')
+                    ->when($q !== '', fn ($x) => $x->where(fn ($y) =>
+                        $y->where('title', 'like', "%{$q}%")
+                          ->orWhere('excerpt', 'like', "%{$q}%")
+                          ->orWhere('body', 'like', "%{$q}%")
+                    ))
+                    ->when($status !== '', fn ($x) => $x->where('status', $status))
+                    ->orderByDesc('published_at')
+                    ->orderByDesc('id')
+                    ->paginate(self::PAGINATION_LIMIT);
+            }
+        );
+
+        return view('dashboard.admin.news.index', [
+            'items'        => $items,
+            'searchQuery'  => $q,
+            'statusFilter' => $status,
+        ]);
     }
 
     public function create(): View
     {
         $item = new News([
-            'status' => 'draft',
-            'published_at' => now(),
+            'status'           => 'draft',
+            'published_at'     => now(),
+            'meta_title'       => '',
+            'meta_description' => '',
         ]);
+
         return view('dashboard.admin.news.create', compact('item'));
     }
 
     public function store(StoreNewsRequest $request): RedirectResponse
     {
-        $data = $request->validated();
-
-        $news = new News($data);
+        $data          = $request->validated();
+        $news          = new News($data);
         $news->user_id = $request->user()->id;
-        $news->slug = News::makeUniqueSlug($data['title']);
-        $news->excerpt = $data['excerpt'] ?? Str::limit(strip_tags($data['body']), 180);
+        $news->slug    = News::makeUniqueSlug($data['title']);
+        $news->excerpt = $this->makeExcerpt($data);
 
         if ($request->hasFile('cover')) {
-            $news->cover_path = $request->file('cover')->store('news', 'public');
+            $news->cover_path = $this->processAndStoreImage($request->file('cover'));
         }
 
-        // default published_at kalau published dan belum diisi
         if ($news->status === 'published' && empty($news->published_at)) {
             $news->published_at = now();
         }
 
         $news->save();
+        $this->clearNewsCaches();
 
-        return redirect()->route('admin.news.index')->with('status','Berita berhasil dibuat.');
+        return redirect()->route('admin.news.index')->with('success', 'Berita berhasil dibuat.');
     }
 
     public function edit(News $news): View
     {
-        return view('dashboard.admin.news.edit', ['item' => $news]);
+        $news->load('user:id,name');
+        $item = $news; // view memakai $item
+        return view('dashboard.admin.news.edit', compact('item'));
     }
 
     public function update(UpdateNewsRequest $request, News $news): RedirectResponse
     {
-        $data = $request->validated();
+        $data         = $request->validated();
+        $oldCoverPath = $news->cover_path;
 
-        // slug update bila title berubah
         if ($news->title !== $data['title']) {
             $news->slug = News::makeUniqueSlug($data['title']);
         }
 
         $news->fill($data);
-        $news->excerpt = $data['excerpt'] ?? Str::limit(strip_tags($data['body']), 180);
+        $news->excerpt = $this->makeExcerpt($data);
 
         if ($request->hasFile('cover')) {
-            $news->cover_path = $request->file('cover')->store('news', 'public');
+            $news->cover_path = $this->processAndStoreImage($request->file('cover'));
+            if ($oldCoverPath) {
+                Storage::disk('public')->delete($oldCoverPath);
+            }
         }
 
         if ($news->status === 'published' && empty($news->published_at)) {
@@ -88,13 +125,57 @@ class NewsController extends Controller
         }
 
         $news->save();
+        $this->clearNewsCaches();
 
-        return back()->with('status','Berita diperbarui.');
+        return back()->with('success', 'Berita berhasil diperbarui.');
     }
 
     public function destroy(News $news): RedirectResponse
     {
+        $oldCoverPath = $news->cover_path;
         $news->delete();
-        return back()->with('status','Berita dihapus.');
+        if ($oldCoverPath) {
+            Storage::disk('public')->delete($oldCoverPath);
+        }
+
+        $this->clearNewsCaches();
+        return back()->with('success', 'Berita berhasil dihapus.');
+    }
+
+    // ===== Helpers =====
+
+    private function makeExcerpt(array $data): string
+    {
+        if (!empty($data['excerpt'])) {
+            return $data['excerpt'];
+        }
+        return \Illuminate\Support\Str::limit(trim(strip_tags($data['body'] ?? '')), 160);
+    }
+
+    private function processAndStoreImage($uploaded): string
+    {
+        $fileName    = 'news-' . Str::uuid() . '.webp';
+        $storagePath = 'news/' . $fileName;
+
+        $img = Image::read($uploaded)
+            ->resize(1200, 800, function ($c) {
+                $c->aspectRatio();
+                $c->upsize();
+            })
+            ->encode(new WebpEncoder(quality: 75));
+
+        Storage::disk('public')->put($storagePath, (string) $img);
+
+        return $storagePath;
+    }
+
+    private function clearNewsCaches(): void
+    {
+        // Bump version → seluruh key "news:v{ver}:*" otomatis basi tanpa butuh tags
+        if (Cache::has(self::CACHE_VERSION_KEY)) {
+            Cache::increment(self::CACHE_VERSION_KEY);
+        } else {
+            Cache::forever(self::CACHE_VERSION_KEY, 1);
+        }
     }
 }

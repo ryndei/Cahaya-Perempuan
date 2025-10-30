@@ -3,21 +3,34 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\File;
 
 class StoreNewsRequest extends FormRequest
 {
-    public function authorize(): bool { return $this->user()?->can('news.manage') ?? false; }
+    public function authorize(): bool
+    {
+        return true; // sudah ditutupi gate/middleware
+    }
 
     public function rules(): array
     {
         return [
-            'title'  => ['required','string','max:200'],
-            'body'   => ['required','string'],
-            'cover'  => ['nullable','image','mimes:jpg,jpeg,png,webp','max:2048'],
-            'status' => ['required','in:draft,published'],
-            'published_at' => ['nullable','date'],
-            'meta_title' => ['nullable','string','max:255'],
-            'meta_description' => ['nullable','string','max:255'],
+            'title'           => 'required|string|max:255',
+            'body'            => 'required|string',
+            'excerpt'         => 'nullable|string|max:300',
+            'status'          => 'required|in:draft,published',
+            'published_at'    => 'nullable|date',
+            'cover'           => [
+                'nullable',
+                File::image()->max(5 * 1024), // 5MB
+                Rule::dimensions()->maxWidth(2000)->maxHeight(2000),
+            ],
+            'meta_title'       => 'nullable|string|max:255',
+            'meta_description' => 'nullable|string|max:160',
+            'category'         => 'nullable|string|max:100',
+            'tags'             => 'nullable|array',
+            'tags.*'           => 'string|max:50',
         ];
     }
 }

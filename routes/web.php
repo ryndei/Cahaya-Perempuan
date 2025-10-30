@@ -2,14 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Models\News;
-// Profile
+
+// Controllers
 use App\Http\Controllers\ProfileController;
 
-// ================= USER controllers =================
+// USER controllers
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
 use App\Http\Controllers\User\ComplaintController as UserComplaintController;
 
-// ================= ADMIN controllers ================
+// ADMIN controllers
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController as AdminComplaintController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
@@ -55,7 +56,7 @@ Route::middleware('auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', [UserDashboardController::class, 'index'])
-    ->middleware(['auth','verified','redirect.dashboard.byrole'])
+    ->middleware(['auth', 'verified', 'redirect.dashboard.byrole'])
     ->name('dashboard');
 
 /*
@@ -63,12 +64,11 @@ Route::get('/dashboard', [UserDashboardController::class, 'index'])
 | ADMIN Dashboard & Pages (admin & super-admin)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth','verified','role:admin|super-admin'])->group(function () {
-    // Admin home (invokable controller)
+Route::middleware(['auth', 'verified', 'role:admin|super-admin'])->group(function () {
     Route::get('/admin', AdminDashboardController::class)->name('admin.dashboard');
 
-    // (opsional) halaman statis lain
-    Route::get('/admin.manajemen-pengaduan', fn () => view('dashboard.admin.manajemen-pengaduan'))
+    // (Opsional) Halaman statis admin lain
+    Route::get('/admin/manajemen-pengaduan', fn () => view('dashboard.admin.manajemen-pengaduan'))
         ->name('admin.manajemen-pengaduan');
 });
 
@@ -77,7 +77,7 @@ Route::middleware(['auth','verified','role:admin|super-admin'])->group(function 
 | USER – Pengaduan
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth','verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/pengaduan',                  [UserComplaintController::class, 'index'])->name('complaints.index');
     Route::get('/pengaduan/buat',             [UserComplaintController::class, 'create'])->name('complaints.create');
     Route::post('/pengaduan',                 [UserComplaintController::class, 'store'])->middleware('throttle:complaints')->name('complaints.store');
@@ -89,7 +89,7 @@ Route::middleware(['auth','verified'])->group(function () {
 | ADMIN – Pengaduan (admin & super-admin)
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth','verified','role:admin|super-admin'])
+Route::middleware(['auth', 'verified', 'role:admin|super-admin'])
     ->prefix('admin')
     ->as('admin.')
     ->group(function () {
@@ -97,18 +97,17 @@ Route::middleware(['auth','verified','role:admin|super-admin'])
         Route::get('/complaints/{complaint}',          [AdminComplaintController::class, 'show'])->name('complaints.show');
         Route::patch('/complaints/{complaint}/status', [AdminComplaintController::class, 'updateStatus'])->name('complaints.updateStatus');
 
-        // Export CSV (mengikuti filter querystring yang sama)
-        Route::get('/complaints/export/csv',           [AdminComplaintController::class, 'exportCsv'])
-            ->name('complaints.export.csv');
-            
-        Route::get('/complaints/export/xlsx', [AdminComplaintController::class, 'exportXlsx'])
-    ->name('complaints.export.xlsx');
+        // Export (mengikuti filter querystring yang sama)
+        Route::get('/complaints/export/csv',  [AdminComplaintController::class, 'exportCsv'])->name('complaints.export.csv');
+        Route::get('/complaints/export/xlsx', [AdminComplaintController::class, 'exportXlsx'])->name('complaints.export.xlsx');
     });
-  
-/*Manajemen user Admin--------------------------------------------------------------------------
-|
+
+/*
+|--------------------------------------------------------------------------
+| ADMIN – Manajemen User (super-admin)
+|--------------------------------------------------------------------------
 */
-Route::middleware(['auth','verified','role:super-admin'])
+Route::middleware(['auth', 'verified', 'role:super-admin'])
     ->prefix('admin/users')
     ->as('admin.users.')
     ->group(function () {
@@ -121,15 +120,31 @@ Route::middleware(['auth','verified','role:super-admin'])
         Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('resetPassword');
     });
 
-Route::middleware(['auth','verified','can:news.manage'])
-    ->prefix('admin')->as('admin.')
+/*
+|--------------------------------------------------------------------------
+| ADMIN – News (admin & super-admin)
+|   - Single resource definition (no duplicate)
+|   - Tanpa halaman "show" di admin
+|   - Redirect GET /admin/news/{news} → /admin/news/{news}/edit (opsional)
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['auth', 'verified', 'can:news.manage'])
+    ->prefix('admin')
+    ->as('admin.')
     ->group(function () {
         Route::resource('news', NewsController::class)->except(['show']);
+
+        // Opsional: kalau ada yang akses /admin/news/{news} (GET), alihkan ke edit
+        Route::get('news/{news}', function (News $news) {
+            return redirect()->route('admin.news.edit', $news);
+        })->name('news.redirect');
     });
 
-// Publik (list & detail)
-
-
+/*
+|--------------------------------------------------------------------------
+| Publik – Berita
+|--------------------------------------------------------------------------
+*/
 Route::get('/berita', function () {
     $items = News::published()->latest('published_at')->paginate(9);
     return view('news.index', compact('items'));
@@ -138,8 +153,11 @@ Route::get('/berita', function () {
 Route::get('/berita/{news:slug}', function (News $news) {
     abort_unless($news->status === 'published', 404);
     return view('news.show', compact('news'));
-})->name('news.show');    
+})->name('news.show');
 
-    
-
-require __DIR__.'/auth.php';
+/*
+|--------------------------------------------------------------------------
+| Auth routes (Breeze/Fortify/etc.)
+|--------------------------------------------------------------------------
+*/
+require __DIR__ . '/auth.php';
