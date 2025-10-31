@@ -10,6 +10,16 @@
   @endphp
   
   <div class="max-w-3xl mx-auto p-6">
+    @if ($errors->any())
+      <div class="mb-4 rounded border border-rose-200 bg-rose-50 px-4 py-2 text-rose-700">
+        <div class="font-semibold">Form tidak dapat dikirim:</div>
+        <ul class="list-disc pl-5">
+          @foreach ($errors->all() as $error)
+            <li>{{ $error }}</li>
+          @endforeach
+        </ul>
+      </div>
+    @endif
     @if (session('status'))
       <div class="mb-4 rounded-lg bg-green-50 px-4 py-3 text-green-700">
         {{ session('status') }}
@@ -26,24 +36,21 @@
         <section>
           <h2 class="text-sm font-semibold text-slate-800">Data Pelapor</h2>
           <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {{-- Nama Pelapor --}}
             <div>
               <label class="block text-sm font-medium text-slate-700">Nama Pelapor</label>
-              <input name="reporter_name" value="{{ old('reporter_name') }}"
+              <input type="text" name="reporter_name" value="{{ old('reporter_name') }}"
                      class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
               @error('reporter_name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Nomor HP --}}
             <div>
               <label class="block text-sm font-medium text-slate-700">No. Telepon</label>
-              <input name="reporter_phone" value="{{ old('reporter_phone') }}"
+              <input type="text" name="reporter_phone" value="{{ old('reporter_phone') }}"
                      placeholder="08xxxxxxxxxx / +62xxxx"
                      class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
               @error('reporter_phone')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Umur Pelapor --}}
             <div>
               <label class="block text-sm font-medium text-slate-700">Umur Pelapor</label>
               <input type="number" name="reporter_age" min="0" max="120" step="1" value="{{ old('reporter_age') }}"
@@ -51,7 +58,6 @@
               @error('reporter_age')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Disabilitas --}}
             <div>
               <label class="block text-sm font-medium text-slate-700">Penyandang Disabilitas</label>
               <select name="reporter_is_disability"
@@ -63,10 +69,9 @@
               @error('reporter_is_disability')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
 
-            {{-- Pekerjaan Pelapor --}}
             <div class="sm:col-span-2">
               <label class="block text-sm font-medium text-slate-700">Pekerjaan Pelapor</label>
-              <input name="reporter_job" value="{{ old('reporter_job') }}"
+              <input type="text" name="reporter_job" value="{{ old('reporter_job') }}"
                      placeholder="contoh: Pelajar/Mahasiswa, IRT, Buruh, Pegawai, dsb."
                      class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
               @error('reporter_job')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
@@ -79,32 +84,29 @@
           <h2 class="text-sm font-semibold text-slate-800">Lokasi/Alamat</h2>
 
           @if($provinceTree->isEmpty())
-            {{-- Fallback jika data laravolt belum tersedia --}}
+            {{-- Fallback tanpa Laravolt (pakai nama bebas) --}}
             <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700">Provinsi</label>
-                <input name="province_name" value="{{ old('province_name') }}"
+                <input type="text" name="province_name" value="{{ old('province_name') }}"
                        class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
                 @error('province_name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700">Kab/Kota</label>
-                <input name="regency_name" value="{{ old('regency_name') }}"
+                <input type="text" name="regency_name" value="{{ old('regency_name') }}"
                        class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
                 @error('regency_name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700">Kecamatan</label>
-                <input name="district_name" value="{{ old('district_name') }}"
+                <input type="text" name="district_name" value="{{ old('district_name') }}"
                        class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
                 @error('district_name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
               </div>
             </div>
-            <p class="mt-2 text-xs text-slate-500">
-              *Dropdown wilayah otomatis akan aktif setelah paket <code>laravolt/indonesia</code> dan seed data terpasang.
-            </p>
           @else
-            {{-- Dropdown berantai (pakai kode + hidden untuk nama) --}}
+            {{-- Dropdown berantai (codes + hidden names) --}}
             <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label class="block text-sm font-medium text-slate-700">Provinsi</label>
@@ -138,10 +140,9 @@
             </div>
           @endif
 
-          {{-- Alamat spesifik --}}
           <div class="mt-3">
             <label class="block text-sm font-medium text-slate-700">Alamat Spesifik</label>
-            <input name="reporter_address" value="{{ old('reporter_address') }}"
+            <input type="text" name="reporter_address" value="{{ old('reporter_address') }}"
                    placeholder="Jalan, No, RT/RW, Dusun/Kelurahan (bila perlu)"
                    class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
             @error('reporter_address')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
@@ -170,7 +171,7 @@
           <div class="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-slate-700">Nama Pelaku</label>
-              <input name="perpetrator_name" value="{{ old('perpetrator_name') }}"
+              <input type="text" name="perpetrator_name" value="{{ old('perpetrator_name') }}"
                      class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
               @error('perpetrator_name')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
@@ -182,14 +183,14 @@
             </div>
             <div class="sm:col-span-2">
               <label class="block text-sm font-medium text-slate-700">Pekerjaan Pelaku</label>
-              <input name="perpetrator_job" value="{{ old('perpetrator_job') }}"
+              <input type="text" name="perpetrator_job" value="{{ old('perpetrator_job') }}"
                      class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500" />
               @error('perpetrator_job')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
             </div>
           </div>
         </section>
 
-        {{-- ============ DESKRIPSI & LAMPIRAN ============ --}}
+        {{-- ============ DESKRIPSI ============ --}}
         <section>
           <h2 class="text-sm font-semibold text-slate-800">Rincian Peristiwa</h2>
           <div class="mt-3">
@@ -199,7 +200,6 @@
                       class="mt-1 w-full rounded-lg border-slate-300 focus:border-purple-500 focus:ring-purple-500">{{ old('description') }}</textarea>
             @error('description')<p class="text-sm text-red-600 mt-1">{{ $message }}</p>@enderror
           </div>
-
         </section>
 
         {{-- ============ AKSI ============ --}}
@@ -207,38 +207,28 @@
           <button class="rounded-lg bg-purple-700 px-4 py-2 font-semibold text-white hover:bg-purple-800">
             Kirim Pengaduan
           </button>
-          <a href="{{ route('complaints.index') }}" class="rounded-lg bg-white px-4 py-2 border  text-slate-800 hover:bg-slate-50
-                      focus:outline-none focus:ring-2 focus:ring-purple-300">Batal</a>
+          <a href="{{ route('complaints.index') }}" class="rounded-lg bg-white px-4 py-2 border text-slate-800 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-purple-300">
+            Batal
+          </a>
         </div>
-{{-- NOTE: Berkas yang perlu dibawa saat verifikasi --}}
-<div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900" role="note" aria-label="Catatan berkas verifikasi">
-  <div class="flex items-start gap-3">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M11 7h2v2h-2V7m1-5a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2m1 15h-2v-6h2v6Z"/>
-    </svg>
 
-    <div>
-      <p class="font-semibold">Catatan: Siapkan berkas saat datang ke kantor/asesmen</p>
-      <ul class="mt-2 list-disc pl-5 space-y-1">
-        <li>Fotokopi <strong>KTP</strong> pelapor/korban <span class="text-xs">(bawa asli untuk dicocokkan)</span></li>
-        <li>Fotokopi <strong>Kartu Keluarga (KK)</strong></li>
-        <li><strong>SKTM</strong> (Surat Keterangan Tidak Mampu) <span class="text-xs">(jika diperlukan/ada)</span></li>
-        <li>Untuk kasus <strong>KDRT</strong>, bawa juga <strong>Buku Nikah</strong> atau dokumen status perkawinan.</li>
-      </ul>
-      <p class="mt-2 text-xs text-amber-900/80">
-        Jika belum memiliki SKTM, bisa menyusul dengan surat pengantar dari RT/RW atau kelurahan.
-      </p>
-    </div>
-  </div>
-</div>
+        <div class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <p class="font-semibold">Catatan: Siapkan berkas saat datang ke kantor/asesmen</p>
+          <ul class="mt-2 list-disc pl-5 space-y-1">
+            <li>Fotokopi <strong>KTP</strong> pelapor/korban <span class="text-xs">(bawa asli untuk dicocokkan)</span></li>
+            <li>Fotokopi <strong>Kartu Keluarga (KK)</strong></li>
+            <li><strong>SKTM</strong> (bila diperlukan)</li>
+            <li>Untuk kasus <strong>KDRT</strong>, bawa juga <strong>Buku Nikah</strong> / dokumen status perkawinan.</li>
+          </ul>
+        </div>
+
         <p class="text-xs text-slate-500">
-          Data Anda kami jaga sesuai prinsip kerahasiaan & keselamatan. Pengisian opsional boleh dikosongkan jika tidak nyaman.
+          Data Anda kami jaga sesuai prinsip kerahasiaan & keselamatan. Kolom opsional boleh dikosongkan.
         </p>
       </form>
     </div>
   </div>
 
-  {{-- ============ JS dropdown berantai wilayah--}}
   @if($provinceTree->isNotEmpty())
   <script>
     (function() {
@@ -266,8 +256,7 @@
 
       function enable(sel, on) {
         sel.disabled = !on;
-        if (!on) sel.classList.add('bg-slate-50');
-        else sel.classList.remove('bg-slate-50');
+        sel.classList.toggle('bg-slate-50', !on);
       }
 
       function fillProvinces() {
@@ -285,10 +274,8 @@
         clearOptions($kab, '— Pilih Kab/Kota —');
         clearOptions($kec, '— Pilih Kecamatan —');
         enable($kab, false); enable($kec, false);
-
         const p = DATA.find(x => x.code === provCode);
         if (!p) return;
-
         p.regencies.forEach(r => {
           const o = document.createElement('option');
           o.value = r.code;
@@ -302,12 +289,10 @@
       function fillDistricts(provCode, regCode) {
         clearOptions($kec, '— Pilih Kecamatan —');
         enable($kec, false);
-
         const p = DATA.find(x => x.code === provCode);
         if (!p) return;
         const r = p.regencies.find(x => x.code === regCode);
         if (!r) return;
-
         r.districts.forEach(d => {
           const o = document.createElement('option');
           o.value = d.code;
@@ -318,48 +303,39 @@
         enable($kec, true);
       }
 
-      // Update hidden "name" setiap perubahan
       $prov?.addEventListener('change', () => {
         const opt = $prov.selectedOptions[0];
-        $provName.value = opt && opt.dataset.name ? opt.dataset.name : '';
-        // reset turunannya
+        $provName.value = opt?.dataset.name || '';
         $kabName.value = ''; $kecName.value = '';
         fillRegencies($prov.value);
       });
 
       $kab?.addEventListener('change', () => {
         const opt = $kab.selectedOptions[0];
-        $kabName.value = opt && opt.dataset.name ? opt.dataset.name : '';
-        // reset kec
+        $kabName.value = opt?.dataset.name || '';
         $kecName.value = '';
         fillDistricts($prov.value, $kab.value);
       });
 
       $kec?.addEventListener('change', () => {
         const opt = $kec.selectedOptions[0];
-        $kecName.value = opt && opt.dataset.name ? opt.dataset.name : '';
+        $kecName.value = opt?.dataset.name || '';
       });
 
-      // Init
       fillProvinces();
 
-      // Restore old selections (jika ada)
+      // Restore
       if (oldProv) {
         $prov.value = oldProv;
-        const opt = $prov.selectedOptions[0];
-        if (opt) $provName.value = opt.dataset.name || '';
+        $provName.value = $prov.selectedOptions[0]?.dataset.name || '';
         fillRegencies(oldProv);
-
         if (oldKab) {
           $kab.value = oldKab;
-          const opt2 = $kab.selectedOptions[0];
-          if (opt2) $kabName.value = opt2.dataset.name || '';
+          $kabName.value = $kab.selectedOptions[0]?.dataset.name || '';
           fillDistricts(oldProv, oldKab);
-
           if (oldKec) {
             $kec.value = oldKec;
-            const opt3 = $kec.selectedOptions[0];
-            if (opt3) $kecName.value = opt3.dataset.name || '';
+            $kecName.value = $kec.selectedOptions[0]?.dataset.name || '';
           }
         }
       }

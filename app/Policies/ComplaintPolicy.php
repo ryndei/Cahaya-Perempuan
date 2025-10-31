@@ -12,68 +12,69 @@ class ComplaintPolicy
 
     /**
      * Lihat daftar pengaduan (index).
-     * Semua user login boleh melihat daftar miliknya.
+     * Semua user login boleh (nanti filter "milik sendiri" ada di controller/query).
      */
     public function viewAny(User $user): bool
     {
-        return $user !== null;
+        return true;
     }
 
     /**
      * Lihat detail sebuah pengaduan.
-     * Pemilik tiket ATAU admin/super-admin diperbolehkan.
+     * Diizinkan jika:
+     * - punya permission 'complaint.manage' (admin/super-admin), ATAU
+     * - pemilik tiket (user yang buat).
      */
     public function view(User $user, Complaint $complaint): bool
     {
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super-admin']);
-        return $isAdmin || $user->id === $complaint->user_id;
+        if ($user->can('complaint.manage')) {
+            return true;
+        }
+        return $user->id === $complaint->user_id;
     }
 
     /**
      * Buat pengaduan baru.
-     * Semua user login (opsional: yang sudah verified) diizinkan.
+     * Diizinkan jika punya 'complaint.create'.
+     * (Kalau butuh verified: && $user->hasVerifiedEmail())
      */
     public function create(User $user): bool
     {
-        // Jika ingin wajib verified: return $user->hasVerifiedEmail();
-        return $user !== null;
+        return $user->can('complaint.create');
     }
 
     /**
-     * Ubah data pengaduan (kalau ada fitur edit).
-     * Khusus admin/super-admin.
+     * Ubah data pengaduan (jika ada fitur edit).
+     * Admin/super-admin saja (punya 'complaint.manage').
      */
     public function update(User $user, Complaint $complaint): bool
     {
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super-admin']);
-        return $isAdmin;
+        return $user->can('complaint.manage');
     }
 
     /**
      * Hapus pengaduan (jika ada).
-     * Khusus admin/super-admin.
+     * Admin/super-admin saja.
      */
     public function delete(User $user, Complaint $complaint): bool
     {
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super-admin']);
-        return $isAdmin;
+        return $user->can('complaint.manage');
     }
 
     /**
-     * Ability kustom: ubah status pengaduan (dipakai admin controller).
+     * Ability kustom: ubah status pengaduan (dipakai di Admin controller).
      */
     public function updateStatus(User $user, Complaint $complaint): bool
     {
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super-admin']);
-        return $isAdmin;
+        return $user->can('complaint.manage');
     }
 
     /**
-     * Ability kustom: ekspor data.
+     * Ability kustom: ekspor data pengaduan (Admin).
+     * Kalau nanti mau granular, buat permission 'complaint.export' dan map ke role terkait.
      */
     public function export(User $user): bool
     {
-        $isAdmin = method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin', 'super-admin']);
-        return $isAdmin;
+        return $user->can('complaint.manage');
     }
 }

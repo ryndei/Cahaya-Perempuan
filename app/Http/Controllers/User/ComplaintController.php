@@ -8,8 +8,13 @@ use App\Models\Complaint;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+
+// Laravolt wilayah
 use Laravolt\Indonesia\Models\Province;
+use Laravolt\Indonesia\Models\City;
+use Laravolt\Indonesia\Models\District;
 
 class ComplaintController extends Controller
 {
@@ -18,29 +23,28 @@ class ComplaintController extends Controller
      */
     public function index(): View
     {
-        $statusLabels = \App\Models\Complaint::statusLabels();
+        $statusLabels = Complaint::statusLabels();
 
-      // Warna badge
-      $statusClasses = [
-        'submitted'        => 'bg-slate-100 text-slate-700',
-        'in_review'        => 'bg-amber-100 text-amber-800',
-        'follow_up'        => 'bg-blue-100 text-blue-800',
-        'closed'           => 'bg-emerald-100 text-emerald-800',
-        'closed_pa'        => 'bg-emerald-100 text-emerald-800',
-        'closed_pn'        => 'bg-teal-100 text-teal-800',
-        'closed_mediation' => 'bg-lime-100 text-lime-800',
-      ];
+        // Warna badge
+        $statusClasses = [
+            'submitted'        => 'bg-slate-100 text-slate-700',
+            'in_review'        => 'bg-amber-100 text-amber-800',
+            'follow_up'        => 'bg-blue-100 text-blue-800',
+            'closed'           => 'bg-emerald-100 text-emerald-800',
+            'closed_pa'        => 'bg-emerald-100 text-emerald-800',
+            'closed_pn'        => 'bg-teal-100 text-teal-800',
+            'closed_mediation' => 'bg-lime-100 text-lime-800',
+        ];
 
-      // Label singkat untuk tampilan tabel (full label tampil di tooltip)
-      $shortStatusLabels = [
-        'submitted'        => 'Diajukan',
-        'in_review'        => 'Ditinjau',
-        'follow_up'        => 'Ditindaklanjuti',
-        'closed'           => 'Selesai',
-        'closed_pa'        => 'Selesai — PA',
-        'closed_pn'        => 'Selesai — PN',
-        'closed_mediation' => 'Selesai — Mediasi',
-      ];
+        $shortStatusLabels = [
+            'submitted'        => 'Diajukan',
+            'in_review'        => 'Ditinjau',
+            'follow_up'        => 'Ditindaklanjuti',
+            'closed'           => 'Selesai',
+            'closed_pa'        => 'Selesai — PA',
+            'closed_pn'        => 'Selesai — PN',
+            'closed_mediation' => 'Selesai — Mediasi',
+        ];
 
         $userId = Auth::id();
 
@@ -53,7 +57,9 @@ class ComplaintController extends Controller
             ->take(5)
             ->get();
 
-        return view('dashboard.user.complaints.index', compact('complaints', 'recent', 'statusLabels', 'statusClasses', 'shortStatusLabels'));
+        return view('dashboard.user.complaints.index', compact(
+            'complaints', 'recent', 'statusLabels', 'statusClasses', 'shortStatusLabels'
+        ));
     }
 
     /**
@@ -70,7 +76,6 @@ class ComplaintController extends Controller
             'Lainnya',
         ];
 
-        // Siapkan tree wilayah jika paket Laravolt tersedia
         $provinceTree = collect();
         if (class_exists(Province::class)) {
             $provinceTree = Province::query()
@@ -102,31 +107,64 @@ class ComplaintController extends Controller
      * Simpan pengaduan baru.
      */
     public function store(StoreComplaintRequest $request): RedirectResponse
-    {
-        $this->authorize('create', Complaint::class);
+{
+    $this->authorize('create', Complaint::class);
 
-        $data = $request->validated();
-        unset($data['user_id'], $data['code'], $data['status'], $data['admin_note']);
-        $data['status'] = Complaint::STATUS_SUBMITTED;
+    $payload = $request->validated();
 
+    unset(
+        $payload['user_id'], $payload['code'], $payload['status'], $payload['admin_note']
+    );
+
+    // Resolve nama wilayah dari CODE (jika ada)
+    $prov = class_exists(\Laravolt\Indonesia\Models\Province::class)
+        ? \Laravolt\Indonesia\Models\Province::where('code', $payload['province_code'] ?? null)->first()
+        : null;
+    $reg  = class_exists(\Laravolt\Indonesia\Models\City::class)
+        ? \Laravolt\Indonesia\Models\City::where('code', $payload['regency_code'] ?? null)->first()
+        : null;
+    $dist = class_exists(\Laravolt\Indonesia\Models\District::class)
+        ? \Laravolt\Indonesia\Models\District::where('code', $payload['district_code'] ?? null)->first()
+        : null;
+
+    $c = new \App\Models\Complaint();
+    $c->fill($payload);
+    $c->user_id = \Illuminate\Support\Facades\Auth::id();
+    $c->status  = \App\Models\Complaint::STATUS_SUBMITTED;
+
+    // Nama wilayah: pakai hasil resolve CODE; kalau null, pakai input NAME (fallback)
+    $c->province_name = $prov?->name ?? ($payload['province_name'] ?? null);
+    $c->regency_name  = $reg?->name  ?? ($payload['regency_name'] ?? null);
+    $c->district_name = $dist?->name ?? ($payload['district_name'] ?? null);
+
+    if (!empty($c->description)) {
+        $c->description = trim(preg_replace('/\s+/u', ' ', $c->description));
+    }
+
+    // Simpan dulu
+    $c->save();
+
+    // Kirim job kwitansi – tidak membatalkan submit bila gagal
+    if (class_exists(\App\Jobs\SendComplaintReceipt::class)) {
         try {
-            Complaint::create($data);
-            return redirect()->route('complaints.index')
-                ->with('status', 'Pengaduan berhasil dikirim.');
+            \App\Jobs\SendComplaintReceipt::dispatch($c->code)->onQueue('emails');
         } catch (\Throwable $e) {
-            Log::error('Gagal menyimpan pengaduan', [
-                'error' => $e->getMessage(),
-                'user_id' => Auth::id(),
-            ]);
-            return back()->withInput()->withErrors([
-                'error' => 'Terjadi kesalahan saat menyimpan pengaduan. Silakan coba lagi.',
+            Log::warning('Gagal dispatch kwitansi pengaduan', [
+                'code' => $c->code,
+                'msg'  => $e->getMessage(),
             ]);
         }
     }
+
+    return redirect()
+        ->route('complaints.show', $c)
+        ->with('status', 'Pengaduan berhasil dikirim.');
+}
+
     /**
      * Detail pengaduan (owner atau admin/super-admin).
      */
-   public function show(Complaint $complaint): View
+    public function show(Complaint $complaint): View
     {
         $this->authorize('view', $complaint);
         $statusLabels = Complaint::statusLabels();
@@ -142,12 +180,10 @@ class ComplaintController extends Controller
             default            => 'bg-slate-100 text-slate-800 ring-slate-200',
         };
 
-        // Kode & tanggal
         $displayCode   = $complaint->code ?? $complaint->id;
         $createdAtText = optional($complaint->created_at)?->translatedFormat('d F Y H:i') ?? '—';
         $updatedAtText = optional($complaint->updated_at)?->translatedFormat('d F Y H:i') ?? '—';
 
-        // Data ringkas untuk view (supaya Blade bersih)
         $reporterName  = $complaint->reporter_name ?: (optional($complaint->user)->name ?? '—');
         $reporterPhone = $complaint->reporter_phone ?: '—';
         $reporterAge   = $complaint->reporter_age;
@@ -186,8 +222,8 @@ class ComplaintController extends Controller
         ]));
 
         return view('dashboard.user.complaints.show', compact(
-        'complaint','statusLabels','badge','displayCode','createdAtText','updatedAtText',
-        'reporterRows','locationRows','perpetratorRows'
-    ));
+            'complaint','statusLabels','badge','displayCode','createdAtText','updatedAtText',
+            'reporterRows','locationRows','perpetratorRows'
+        ));
     }
 }
