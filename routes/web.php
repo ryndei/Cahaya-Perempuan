@@ -21,22 +21,22 @@ use App\Http\Controllers\Admin\NewsController;
 | Public Pages
 |--------------------------------------------------------------------------
 */
-Route::get('/', fn () => view('welcome'));
+Route::view('/', 'welcome');
 
-Route::get('/profil-lembaga', fn () => view('profil-lembaga'))->name('profil-lembaga');
-Route::get('/kontak-kami', fn () => view('kontak-kami'))->name('kontak-kami');
-Route::get('/cara-melapor-landing', fn () => view('cara-melapor-landing'))->name('cara-melapor-landing');
-Route::get('/syarat-layanan', fn () => view('syarat-layanan'))->name('syarat-layanan');
+Route::view('/profil-lembaga', 'profil-lembaga')->name('profil-lembaga');
+Route::view('/kontak-kami', 'kontak-kami')->name('kontak-kami');
+Route::view('/cara-melapor-landing', 'cara-melapor-landing')->name('cara-melapor-landing');
+Route::view('/syarat-layanan', 'syarat-layanan')->name('syarat-layanan');
 
 /*
 |--------------------------------------------------------------------------
-| Static pages (butuh login)
+| Static pages (requires login)
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth'])->group(function () {
-    Route::get('/cara-melapor', fn () => view('dashboard.user.cara-melapor'))->name('cara-melapor');
-    Route::get('/FAQ',          fn () => view('dashboard.user.FAQ'))->name('FAQ');
-    Route::get('/kontak',       fn () => view('dashboard.user.kontak'))->name('kontak');
+    Route::view('/cara-melapor', 'dashboard.user.cara-melapor')->name('cara-melapor');
+    Route::view('/FAQ',          'dashboard.user.FAQ')->name('FAQ');
+    Route::view('/kontak',       'dashboard.user.kontak')->name('kontak');
 });
 
 /*
@@ -70,7 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/pengaduan',                 [UserComplaintController::class, 'store'])
         ->middleware('throttle:complaints')->name('complaints.store');
 
-    // Binding by code (aman dari ID tebakan)
+    // Binding by code (aman dari tebakan ID numerik)
     Route::get('/pengaduan/{complaint:code}', [UserComplaintController::class, 'show'])->name('complaints.show');
 });
 
@@ -80,22 +80,24 @@ Route::middleware(['auth', 'verified'])->group(function () {
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified', 'role:admin|super-admin'])->group(function () {
-    Route::get('/admin', AdminDashboardController::class)->name('admin.dashboard'); // pastikan __invoke ada
-    Route::get('/admin/manajemen-pengaduan', fn () => view('dashboard.admin.manajemen-pengaduan'))
+    // Pastikan AdminDashboardController bersifat __invoke
+    Route::get('/admin', AdminDashboardController::class)->name('admin.dashboard');
+
+    // Halaman statis admin
+    Route::view('/admin/manajemen-pengaduan', 'dashboard.admin.manajemen-pengaduan')
         ->name('admin.manajemen-pengaduan');
 });
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – Pengaduan (admin & super-admin)
-|  ★ Force binding by ID untuk rute admin agar tidak bentrok dengan routeKeyName 'code'
+| ADMIN – Pengaduan (admin & super-admin)  ★ Force binding by ID
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:complaint.manage']) // ★
+Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:complaint.manage'])
     ->prefix('admin')
     ->as('admin.')
     ->group(function () {
-        // Export (spesifik)
+        // Export
         Route::get('/complaints/export/csv',  [AdminComplaintController::class, 'exportCsv'])->name('complaints.export.csv');
         Route::get('/complaints/export/xlsx', [AdminComplaintController::class, 'exportXlsx'])->name('complaints.export.xlsx');
 
@@ -103,12 +105,12 @@ Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:com
         Route::get('/complaints', [AdminComplaintController::class, 'index'])->name('complaints.index');
 
         // Update status by ID
-        Route::patch('/complaints/{complaint:id}/status', [AdminComplaintController::class, 'updateStatus']) // ★
+        Route::patch('/complaints/{complaint:id}/status', [AdminComplaintController::class, 'updateStatus'])
             ->whereNumber('complaint')
             ->name('complaints.updateStatus');
 
         // Show by ID
-        Route::get('/complaints/{complaint:id}', [AdminComplaintController::class, 'show']) // ★
+        Route::get('/complaints/{complaint:id}', [AdminComplaintController::class, 'show'])
             ->whereNumber('complaint')
             ->name('complaints.show');
     });
@@ -125,23 +127,34 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])
         Route::get('/',                       [AdminUserController::class, 'index'])->name('index');
         Route::get('/create',                 [AdminUserController::class, 'create'])->name('create');
         Route::post('/',                      [AdminUserController::class, 'store'])->name('store');
-        Route::get('/{user}/edit',            [AdminUserController::class, 'edit'])->name('edit');
-        Route::patch('/{user}',               [AdminUserController::class, 'update'])->name('update');
-        Route::delete('/{user}',              [AdminUserController::class, 'destroy'])->name('destroy');
-        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])->name('resetPassword');
+
+        Route::get('/{user}/edit',            [AdminUserController::class, 'edit'])
+            ->whereNumber('user')->name('edit');
+
+        Route::patch('/{user}',               [AdminUserController::class, 'update'])
+            ->whereNumber('user')->name('update');
+
+        Route::delete('/{user}',              [AdminUserController::class, 'destroy'])
+            ->whereNumber('user')->name('destroy');
+
+        Route::post('/{user}/reset-password', [AdminUserController::class, 'resetPassword'])
+            ->whereNumber('user')->name('resetPassword');
     });
 
 /*
 |--------------------------------------------------------------------------
 | ADMIN – News (admin & super-admin)
-|  ★ Tambah role + permission, dan tetap redirect id -> edit
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:news.manage']) // ★
+Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:news.manage'])
     ->prefix('admin')
     ->as('admin.')
     ->group(function () {
-        Route::resource('news', NewsController::class)->except(['show'])->names('news');
+        Route::resource('news', NewsController::class)
+            ->except(['show'])
+            ->names('news');
+
+        // Redirect jika user akses /admin/news/{news} tanpa /edit
         Route::get('news/{news}', function (News $news) {
             return redirect()->route('admin.news.edit', $news);
         })->name('news.redirect');
@@ -164,7 +177,7 @@ Route::get('/berita/{news:slug}', function (News $news) {
 
 /*
 |--------------------------------------------------------------------------
-| Auth routes
+| Auth routes (Breeze)
 |--------------------------------------------------------------------------
 */
 require __DIR__ . '/auth.php';
@@ -174,12 +187,6 @@ require __DIR__ . '/auth.php';
 | DEV ONLY – Test error
 |--------------------------------------------------------------------------
 */
-if (app()->environment('local')) {
-    Route::get('/_test/{code}', function (string $code) { abort((int) $code); })
-        ->where('code', '^(401|402|403|404|419|422|429|500|502|503)$');
-
-    Route::get('/_boom', fn () => throw new \Exception('Simulasi 500'));
-}
 
 /*
 |--------------------------------------------------------------------------

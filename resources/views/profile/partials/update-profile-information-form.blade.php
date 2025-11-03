@@ -27,9 +27,9 @@
     @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
       <div class="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
         Email Anda belum terverifikasi.
-        <button form="send-verification" class="ml-2 underline font-semibold hover:text-amber-900">
-          Kirim ulang link verifikasi
-        </button>
+        <a form="send-verification" href="{{ route('verification.notice') }}" class="ml-2 underline font-semibold hover:text-amber-900">
+          Verifikasi Sekarang
+        </a>
       </div>
     @endif
   </div>
@@ -54,8 +54,5 @@
 </form>
 
 {{-- form kirim ulang verifikasi --}}
-@if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
-  <form id="send-verification" method="post" action="{{ route('verification.send') }}">
-    @csrf
-  </form>
-@endif
+
+

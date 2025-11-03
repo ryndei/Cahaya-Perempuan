@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ComplaintsExport;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class ComplaintController extends Controller
 {
@@ -168,8 +169,11 @@ class ComplaintController extends Controller
         );
 
         $complaint->update($data);
+         Alert::success('Sukses', 'Status pengaduan telah diperbarui.');
 
-        return back()->with('status', 'Status pengaduan diperbarui.');
+   
+    return redirect()
+        ->route('admin.complaints.show', $complaint); 
     }
 
     /**

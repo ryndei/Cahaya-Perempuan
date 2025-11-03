@@ -27,4 +27,10 @@ class ProfileUpdateRequest extends FormRequest
             ],
         ];
     }
+    public function messages(): array
+    {
+        return [
+            'email.unique' => 'Email sudah digunakan oleh akun lain.',
+        ];
+    }
 }

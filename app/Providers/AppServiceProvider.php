@@ -34,8 +34,6 @@ class AppServiceProvider extends ServiceProvider
         /**
          * 1) Policy binding + super-admin bypass (Spatie)
          * ------------------------------------------------
-         * Kamu boleh taruh binding policy di AuthServiceProvider,
-         * tapi di sini juga valid selama dipanggil saat boot.
          */
         Gate::policy(Complaint::class, ComplaintPolicy::class);
 
@@ -48,31 +46,24 @@ class AppServiceProvider extends ServiceProvider
         });
 
         /**
-         * 2) Locale tanggal (Carbon)
+         * Locale tanggal (Carbon)
          * ------------------------------------------------
-         * @setlocale disilent karena environment (Windows/Linux) bisa beda.
          */
         $locale = config('app.locale', 'id');
         Carbon::setLocale($locale);
         CarbonImmutable::setLocale($locale);
         @setlocale(LC_TIME, 'id_ID.UTF-8', 'id_ID', 'Indonesian', 'id');
 
-        /**
-         * 3) Rate limiter khusus form pengaduan
-         * ------------------------------------------------
-         * Sesuaikan dengan middleware routes: throttle:complaints
-         * Pakai perMinute(5) agar match rekomendasi sebelumnya.
-         */
+       
         RateLimiter::for('complaints', function (Request $request) {
             $key = optional($request->user())->id ?: $request->ip();
             return Limit::perHour(5)->by($key);
         });
 
         /**
-         * 4) Kustom URL & email reset password (Breeze/Fortify)
+         * Kustom URL & email reset password (Breeze/Fortify)
          * ------------------------------------------------
-         * Pastikan route('password.reset') ada (Breeze/Fortify default).
-         */
+            */
         ResetPassword::createUrlUsing(function ($notifiable, string $token) {
             return route('password.reset', [
                 'token' => $token,
@@ -100,5 +91,15 @@ class AppServiceProvider extends ServiceProvider
         if (app()->isProduction() && config('app.url') && str_starts_with(config('app.url'), 'https://')) {
             URL::forceScheme('https');
         }
+
+        RateLimiter::for('otp', function ($request) {
+            $key = $request->user()?->id ?: $request->ip();
+            return Limit::perHour(5)->by($key);
+        });
+
+        RateLimiter::for('otp-resend', function ($request) {
+            $key = $request->user()?->id ?: $request->ip();
+            return Limit::perHour(5)->by($key);
+        });
     }
 }

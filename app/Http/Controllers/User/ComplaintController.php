@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
-
+use RealRashid\SweetAlert\Facades\Alert;
 // Laravolt wilayah
 use Laravolt\Indonesia\Models\Province;
 use Laravolt\Indonesia\Models\City;
@@ -155,10 +155,9 @@ class ComplaintController extends Controller
             ]);
         }
     }
-
+    Alert::success('Berhasil', 'pengaduan berhasil dikirimkan.');
     return redirect()
-        ->route('complaints.show', $c)
-        ->with('status', 'Pengaduan berhasil dikirim.');
+        ->route('complaints.show', $c);
 }
 
     /**

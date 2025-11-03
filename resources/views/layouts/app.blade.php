@@ -35,6 +35,8 @@
 
     <x-app-footer />
   </div>
+  @include('sweetalert::alert')
+  @stack('scripts')
 </body>
 
 </html>

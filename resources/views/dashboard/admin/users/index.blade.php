@@ -1,4 +1,3 @@
-{{-- resources/views/dashboard/admin/users/index.blade.php --}}
 <x-app-layout>
   <x-slot name="header">@include('profile.partials.top-menu-admin')</x-slot>
 
@@ -42,9 +41,7 @@
       </div>
     </form>
 
-    {{-- =========================
-         DESKTOP TABLE (>= md)
-       ========================= --}}
+    {{-- DESKTOP TABLE (>= md) --}}
     <div class="hidden md:block">
       <div class="rounded-lg border border-slate-200 bg-white">
         <table class="min-w-full text-sm">
@@ -69,24 +66,32 @@
                     </span>
                   @endforeach
                 </td>
-                <td class="px-4 py-3 whitespace-nowrap">{{ optional($u->created_at)->format('d M Y H:i') }}</td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                  {{ optional($u->created_at)->format('d M Y H:i') }}
+                </td>
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
                     <a href="{{ route('admin.users.edit', $u) }}"
                        class="rounded-md border px-3 py-1.5 text-xs hover:bg-slate-50">Edit</a>
 
-                    <form method="POST" action="{{ route('admin.users.resetPassword', $u) }}"
-                          onsubmit="return confirm('Reset password untuk {{ $u->email }}?')">
+                    {{-- Reset Password --}}
+                    <form id="reset-{{ $u->id }}" method="POST" action="{{ route('admin.users.resetPassword', $u) }}" class="inline">
                       @csrf
-                      <button class="rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900">
+                      <button type="button"
+                              class="js-confirm-reset rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900"
+                              data-form="reset-{{ $u->id }}"
+                              data-email="{{ $u->email }}">
                         Reset Password
                       </button>
                     </form>
 
-                    <form method="POST" action="{{ route('admin.users.destroy', $u) }}"
-                          onsubmit="return confirm('Hapus user {{ $u->email }}?')">
+                    {{-- Hapus User --}}
+                    <form id="delete-{{ $u->id }}" method="POST" action="{{ route('admin.users.destroy', $u) }}" class="inline">
                       @csrf @method('DELETE')
-                      <button class="rounded-md bg-red-600 text-white text-xs px-3 py-1.5 hover:bg-red-700">
+                      <button type="button"
+                              class="js-confirm-delete rounded-md bg-red-600 text-white text-xs px-3 py-1.5 hover:bg-red-700"
+                              data-form="delete-{{ $u->id }}"
+                              data-name="{{ $u->email }}">
                         Hapus
                       </button>
                     </form>
@@ -103,9 +108,7 @@
       </div>
     </div>
 
-    {{-- =====================
-         MOBILE CARDS (< md)
-       ===================== --}}
+    {{-- MOBILE CARDS (< md) --}}
     <div class="md:hidden space-y-3">
       @forelse ($users as $u)
         <div class="rounded-xl border border-slate-200 bg-white p-4">
@@ -128,18 +131,24 @@
           </div>
 
           <div class="mt-3 flex items-center gap-2">
-            <form method="POST" class="inline" action="{{ route('admin.users.resetPassword', $u) }}"
-                  onsubmit="return confirm('Reset password untuk {{ $u->email }}?')">
+            {{-- Reset Password --}}
+            <form id="m-reset-{{ $u->id }}" method="POST" action="{{ route('admin.users.resetPassword', $u) }}" class="inline">
               @csrf
-              <button class="rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900">
+              <button type="button"
+                      class="js-confirm-reset rounded-md bg-slate-800 text-white text-xs px-3 py-1.5 hover:bg-slate-900"
+                      data-form="m-reset-{{ $u->id }}"
+                      data-email="{{ $u->email }}">
                 Reset Password
               </button>
             </form>
 
-            <form method="POST" class="inline" action="{{ route('admin.users.destroy', $u) }}"
-                  onsubmit="return confirm('Hapus user {{ $u->email }}?')">
+            {{-- Hapus User --}}
+            <form id="m-delete-{{ $u->id }}" method="POST" action="{{ route('admin.users.destroy', $u) }}" class="inline">
               @csrf @method('DELETE')
-              <button class="rounded-md bg-red-600 text-white text-xs px-3 py-1.5 hover:bg-red-700">
+              <button type="button"
+                      class="js-confirm-delete rounded-md bg-red-600 text-white text-xs px-3 py-1.5 hover:bg-red-700"
+                      data-form="m-delete-{{ $u->id }}"
+                      data-name="{{ $u->email }}">
                 Hapus
               </button>
             </form>
@@ -157,4 +166,54 @@
       {{ $users->links() }}
     </div>
   </div>
+
+  @push('scripts')
+  <script>
+  // Pastikan window.Swal tersedia (layout harus load SweetAlert2)
+  document.addEventListener('click', async (e) => {
+    // Konfirmasi Hapus
+    const delBtn = e.target.closest('.js-confirm-delete');
+    if (delBtn) {
+      e.preventDefault();
+      const form = document.getElementById(delBtn.dataset.form);
+      const name = delBtn.dataset.name || 'user ini';
+
+      const { isConfirmed } = await Swal.fire({
+        title: 'Hapus user?',
+        html: `Aksi ini tidak dapat dibatalkan.<br><b>${name}</b> akan dihapus.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, hapus',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#ef4444',
+        reverseButtons: true,
+        focusCancel: true
+      });
+
+      if (isConfirmed && form) form.submit();
+    }
+
+    // Konfirmasi Reset Password
+    const resetBtn = e.target.closest('.js-confirm-reset');
+    if (resetBtn) {
+      e.preventDefault();
+      const form = document.getElementById(resetBtn.dataset.form);
+      const email = resetBtn.dataset.email || 'user ini';
+
+      const { isConfirmed } = await Swal.fire({
+        title: 'Reset password?',
+        html: `Password untuk <b>${email}</b> akan diganti.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, reset',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        focusCancel: true
+      });
+
+      if (isConfirmed && form) form.submit();
+    }
+  });
+  </script>
+  @endpush
 </x-app-layout>

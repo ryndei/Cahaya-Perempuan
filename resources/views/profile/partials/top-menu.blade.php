@@ -24,3 +24,4 @@
     </a>
   @endforeach
 </nav>
+@include('sweetalert::alert')
