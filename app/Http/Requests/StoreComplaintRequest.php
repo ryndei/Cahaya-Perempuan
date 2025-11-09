@@ -18,27 +18,26 @@ class StoreComplaintRequest extends FormRequest
         return [
             'description'       => ['bail','required','string','min:30'],
 
-            // Opsional
-            'category'          => ['nullable','string','max:100'],
+            'category'          => ['required','string','max:100'],
 
             // PII (terenkripsi di Model)
-            'reporter_name'     => ['nullable','string','max:190'],
-            'reporter_phone'    => ['nullable','string','max:30', function($attr,$val,$fail){
+            'reporter_name'     => ['required','string','max:190'],
+            'reporter_phone'    => ['string','required','max:30', function($attr,$val,$fail){
                 if ($val === null || $val === '') return;
                 $digits = preg_replace('/\D+/', '', (string)$val);
                 if (strlen($digits) < 9 || strlen($digits) > 20) {
                     $fail('Nomor telepon tidak valid.');
                 }
             }],
-            'reporter_address'  => ['nullable','string','max:500'],
-            'reporter_job'      => ['nullable','string','max:120'],
-            'reporter_is_disability' => ['nullable','boolean'],
-            'reporter_age'      => ['nullable','string','max:3', function($attr,$val,$fail){
+            'reporter_address'  => ['required','string','max:500'],
+            'reporter_job'      => ['required','string','max:120'],
+            'reporter_is_disability' => ['required','boolean'],
+            'reporter_age'      => ['required','string','max:3', function($attr,$val,$fail){
                 if ($val === null || $val === '') return;
                 if (!preg_match('/^\d{1,3}$/', (string)$val)) $fail('Umur harus angka 0-999.');
             }],
 
-            // Wilayah: dukung dua mode (codes atau names)
+           
             'province_code'     => ['nullable','string','max:10'],
             'regency_code'      => ['nullable','string','max:10'],
             'district_code'     => ['nullable','string','max:10'],
@@ -48,15 +47,12 @@ class StoreComplaintRequest extends FormRequest
             'district_name'     => ['nullable','string','max:100'],
 
             // Pelaku
-            'perpetrator_name'  => ['nullable','string','max:190'],
+            'perpetrator_name'  => ['required','string','max:190'],
             'perpetrator_job'   => ['nullable','string','max:120'],
             'perpetrator_age'   => ['nullable','string','max:3', function($attr,$val,$fail){
                 if ($val === null || $val === '') return;
                 if (!preg_match('/^\d{1,3}$/', (string)$val)) $fail('Umur pelaku harus angka 0-999.');
             }],
-
-            // Attachment (jika nanti kamu aktifkan upload)
-            'attachment'        => ['nullable','file','max:10240','mimes:jpg,jpeg,png,pdf,doc,docx'],
 
             // Hardening
             'user_id'           => ['prohibited'],
@@ -95,22 +91,45 @@ class StoreComplaintRequest extends FormRequest
     }
 
     public function attributes(): array
-    {
-        return [
-            'description'    => 'deskripsi',
-            'reporter_phone' => 'nomor telepon pelapor',
-            'reporter_age'   => 'umur pelapor',
-            'perpetrator_age'=> 'umur pelaku',
-            'attachment'     => 'lampiran',
-        ];
-    }
+{
+    return [
+        'description'            => 'deskripsi',
+        'category'               => 'kategori',
+        'reporter_name'          => 'nama pelapor',
+        'reporter_phone'         => 'nomor telepon pelapor',
+        'reporter_address'       => 'alamat pelapor',
+        'reporter_job'           => 'pekerjaan pelapor',
+        'reporter_is_disability' => 'status disabilitas pelapor',
+        'reporter_age'           => 'umur pelapor',
+        'perpetrator_name'       => 'nama pelaku',
+        'perpetrator_age'        => 'umur pelaku',
+        'province_name'          => 'nama provinsi',
+        'regency_name'           => 'nama kab/kota',
+        'district_name'          => 'nama kecamatan',
+    ];
+}
 
     public function messages(): array
     {
+        
         return [
+            'required' => ':Attribute wajib diisi.',
+
+            // Aturan umum lain (opsional tapi membantu)
+            'string'   => ':Attribute harus berupa teks.',
+            'max'      => ':Attribute maksimal :max karakter.',
+            'boolean'  => ':Attribute hanya boleh Ya/Tidak.',
+            'digits'   => ':Attribute harus :digits digit.',
+            'digits_between' => ':Attribute harus :min–:max digit.',
+            'min'      => ':Attribute minimal :min karakter.',
+            'in'       => 'Pilihan :attribute tidak valid.',
+
+            // Pesan khusus field tertentu
             'description.required' => 'Deskripsi wajib diisi.',
-            'attachment.max'  => 'Ukuran lampiran maksimal 10 MB.',
-            'attachment.mimes'=> 'Tipe lampiran harus jpg, jpeg, png, pdf, doc, atau docx.',
+            'category.required'    => 'Kategori wajib dipilih.',
+            'reporter_phone.digits_between' => 'Nomor telepon harus 9–20 digit angka.',
+            'reporter_age.regex'   => 'Umur pelapor harus angka 0–999.',
+            'perpetrator_age.regex'=> 'Umur pelaku harus angka 0–999.',
         ];
     }
 }

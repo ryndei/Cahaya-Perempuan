@@ -29,9 +29,17 @@ class RegisteredUserController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email:rfc,dns', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ], [
+            'name.required' => 'Nama lengkap wajib diisi',
+            'email.required' => 'Alamat email wajib diisi',
+            'email.email' => 'Format email tidak valid',
+            'email.unique' => 'Email ini sudah terdaftar',
+            'password.required' => 'Password wajib diisi',
+            'password.confirmed' => 'Konfirmasi password tidak sesuai',
+            'password.min' => 'Password harus minimal 8 karakter',
         ]);
 
         $user = User::create([
@@ -40,13 +48,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
-        // Role default
         $user->assignRole('user');
 
-        // Login agar dapat akses halaman verifikasi
         Auth::login($user);
 
-        // === Generate & kirim OTP (6 digit, berlaku 10 menit) ===
+       
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         EmailOtp::updateOrCreate(

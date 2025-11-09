@@ -18,6 +18,11 @@ class UserController extends Controller
     /**
      * Hanya role ini yang bisa diatur oleh super-admin via modul ini.
      */
+    public function __construct()
+    {
+        $this->middleware(['auth', 'verified', 'can:news.user.manage']);
+    }
+
     private array $manageableRoles = ['user', 'admin'];
 
     public function index(Request $request): View

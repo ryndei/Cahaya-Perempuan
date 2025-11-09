@@ -18,12 +18,12 @@ class SendComplaintReceipt implements ShouldQueue
     public function __construct(string $code)
     {
         $this->code = $code;
-        $this->onQueue('emails'); // konsisten dengan controller
+        $this->onQueue('emails'); 
     }
 
     public function handle(): void
     {
-        // TODO: ganti dengan Mail::to(...)->send(...)
+        
         Log::info('Kwitansi pengaduan dikirim', ['code' => $this->code]);
     }
 }

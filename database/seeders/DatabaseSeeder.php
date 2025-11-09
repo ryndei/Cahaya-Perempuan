@@ -11,13 +11,10 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1) Buat permissions + roles + mapping (HARUS duluan)
         $this->call(RolesAndPermissionsSeeder::class);
 
-        // 2) Reset cache Spatie supaya findByName() melihat role baru
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        // 3) Seed user & assign role (sekarang role SUDAH ada)
         $super = User::firstOrCreate(
             ['email' => 'superadmin@gmail.com'],
             ['name' => 'Super Admin','password' => Hash::make('edoanakrahim628983'),'email_verified_at' => now()]

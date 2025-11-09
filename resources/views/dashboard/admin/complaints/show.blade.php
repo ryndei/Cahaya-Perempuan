@@ -84,7 +84,7 @@
           @endif
 
           <div>
-            <dt class="font-medium text-slate-700">Lokasi (Ringkas)</dt>
+            <dt class="font-medium text-slate-700">Lokasi</dt>
             <dd class="text-slate-800">{{ $lokasiRingkas ?: '—' }}</dd>
           </div>
 
@@ -171,7 +171,7 @@
           </dl>
         </div>
 
-        {{-- Riwayat Status (5 terbaru) --}}
+        {{-- Riwayat Status--}}
         <div class="rounded-2xl border border-slate-200 bg-white p-6">
           <h2 class="text-sm font-semibold text-slate-700">Riwayat Status</h2>
           @if($history->isEmpty())
@@ -181,8 +181,8 @@
               @foreach ($history as $act)
                 @php
                   $p = $act->properties ?? collect();
-                  $from = $p['from_label'] ?? $p['from'] ?? null;
-                  $to   = $p['to_label']   ?? $p['to']   ?? null;
+                  $from = $p['from_label'] ?? $p['from_label'] ?? null;
+                  $to   = $p['to_label']   ?? $p['to_label']   ?? null;
                   $by   = optional($act->causer)->name ?? optional($act->causer)->email;
                   $at   = optional($act->created_at);
                 @endphp

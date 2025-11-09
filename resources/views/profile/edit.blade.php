@@ -2,7 +2,14 @@
 <x-app-layout>
   {{-- Top menu --}}
   <x-slot name="header">
+    @auth
+  @if (auth()->user()->hasAnyRole(['admin','super-admin']))
+    @include('profile.partials.top-menu-admin')
+  @else
     @include('profile.partials.top-menu')
+  @endif
+@endauth
+   
   </x-slot>
 
   {{-- Header section kecil --}}

@@ -1,6 +1,6 @@
 <nav class="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
   @php
-    $menu = [
+     $menu = [
       [
         'label'  => 'Beranda',
         'href'   => route('admin.dashboard'),
@@ -13,24 +13,25 @@
         'icon'   => 'M4 4h16v14H4z M8 22h8',
         'active' => request()->routeIs('admin.complaints*'),
       ],
-      [
-        'label'  => 'Manajemen Kegiatan',
-        'href'   => route('admin.news.index'),
-        'icon'   => 'M4 4h16v14H4z M6 7h4v6H6z M12 7h6 M12 11h6 M12 15h6',
-        'active' => request()->routeIs('admin.news*'),
-      ],
     ];
 
-    // Tambah menu "Manajemen User" hanya untuk super-admin
+  
     if (auth()->check() && auth()->user()->hasRole('super-admin')) {
-      $menu[] = [
-        'label'  => 'Manajemen User',
-        'href'   => route('admin.users.index'),
-        // ikon “users”
-        'icon'   => 'M16 11a4 4 0 10-8 0 4 4 0 008 0z M3 21a7 7 0 0118 0',
-        'active' => request()->routeIs('admin.users*'),
-      ];
-    }
+        $menu = array_merge($menu, [ 
+            [
+                'label'  => 'Manajemen Kegiatan',
+                'href'   => route('admin.news.index'),
+                'icon'   => 'M4 4h16v14H4z M6 7h4v6H6z M12 7h6 M12 11h6 M12 15h6',
+                'active' => request()->routeIs('admin.news*'),
+            ],
+            [
+                'label'  => 'Manajemen User',
+                'href'   => route('admin.users.index'),
+                'icon'   => 'M16 11a4 4 0 10-8 0 4 4 0 008 0z M3 21a7 7 0 0118 0',
+                'active' => request()->routeIs('admin.users*'),
+            ],
+        ]);
+    }   
 
   @endphp
 

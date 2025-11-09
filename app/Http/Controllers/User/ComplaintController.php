@@ -21,6 +21,12 @@ class ComplaintController extends Controller
     /**
      * Daftar pengaduan milik user + ringkasan.
      */
+
+        public function __construct()
+        {
+            $this->middleware(['auth', 'verified', 'can:complaint.create']);
+        }
+
     public function index(): View
     {
         $statusLabels = Complaint::statusLabels();
@@ -116,7 +122,7 @@ class ComplaintController extends Controller
         $payload['user_id'], $payload['code'], $payload['status'], $payload['admin_note']
     );
 
-    // Resolve nama wilayah dari CODE (jika ada)
+   
     $prov = class_exists(\Laravolt\Indonesia\Models\Province::class)
         ? \Laravolt\Indonesia\Models\Province::where('code', $payload['province_code'] ?? null)->first()
         : null;
@@ -160,9 +166,7 @@ class ComplaintController extends Controller
         ->route('complaints.show', $c);
 }
 
-    /**
-     * Detail pengaduan (owner atau admin/super-admin).
-     */
+    
     public function show(Complaint $complaint): View
     {
         $this->authorize('view', $complaint);
