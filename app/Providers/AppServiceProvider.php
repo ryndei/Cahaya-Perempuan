@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Http\Request;                   
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
-
+use Illuminate\Validation\Rules\Password;
 use App\Models\Complaint;
 use App\Policies\ComplaintPolicy;
 
@@ -57,9 +57,17 @@ class AppServiceProvider extends ServiceProvider
        
         RateLimiter::for('complaints', function (Request $request) {
             $key = optional($request->user())->id ?: $request->ip();
-            return Limit::perHour(5)->by($key);
+            return Limit::perMinute(100)->by($key);
+        });
+        RateLimiter::for('verify-otp', function (Request $request) {
+            $key = optional($request->user())->id ?: $request->ip();
+            return Limit::perMinute(5)->by($key);
         });
 
+        RateLimiter::for('resend-otp', function (Request $request) {
+            $key = optional($request->user())->id ?: $request->ip();
+            return Limit::perMinute(5)->by($key);
+        });
         /**
          * Kustom URL & email reset password (Breeze/Fortify)
          * ------------------------------------------------
@@ -92,14 +100,5 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
-        RateLimiter::for('otp', function ($request) {
-            $key = $request->user()?->id ?: $request->ip();
-            return Limit::perHour(5)->by($key);
-        });
-
-        RateLimiter::for('otp-resend', function ($request) {
-            $key = $request->user()?->id ?: $request->ip();
-            return Limit::perHour(5)->by($key);
-        });
     }
 }

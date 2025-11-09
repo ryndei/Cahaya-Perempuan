@@ -13,9 +13,7 @@ class Complaint extends Model
 {
     use HasFactory, LogsActivity;
 
-    /* =========================
-     |  Konstanta Status
-     |=========================*/
+   
     public const STATUS_SUBMITTED        = 'submitted';
     public const STATUS_IN_REVIEW        = 'in_review';
     public const STATUS_FOLLOW_UP        = 'follow_up';

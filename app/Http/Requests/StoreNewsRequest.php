@@ -10,7 +10,7 @@ class StoreNewsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // sudah ditutupi gate/middleware
+        return true; 
     }
 
     public function rules(): array

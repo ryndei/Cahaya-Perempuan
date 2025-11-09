@@ -30,10 +30,10 @@ Route::view('/syarat-layanan', 'syarat-layanan')->name('syarat-layanan');
 
 /*
 |--------------------------------------------------------------------------
-| Static pages (requires login)
+| Static pages
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified', 'role:user'])->group(function () {
     Route::view('/cara-melapor', 'dashboard.user.cara-melapor')->name('cara-melapor');
     Route::view('/FAQ',          'dashboard.user.FAQ')->name('FAQ');
     Route::view('/kontak',       'dashboard.user.kontak')->name('kontak');
@@ -44,7 +44,7 @@ Route::middleware(['auth'])->group(function () {
 | Profile
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
+Route::middleware('auth',)->group(function () {
     Route::get('/profile',  [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile',[ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile',[ProfileController::class, 'destroy'])->name('profile.destroy');
@@ -52,7 +52,7 @@ Route::middleware('auth')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
-| USER Dashboard (auto-redirect by role)
+| USER Dashboard
 |--------------------------------------------------------------------------
 */
 Route::get('/dashboard', [UserDashboardController::class, 'index'])
@@ -61,36 +61,33 @@ Route::get('/dashboard', [UserDashboardController::class, 'index'])
 
 /*
 |--------------------------------------------------------------------------
-| USER – Pengaduan (binding by code)
+| USER – Pengaduan
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified','role:user'])->group(function () {
     Route::get('/pengaduan',                  [UserComplaintController::class, 'index'])->name('complaints.index');
     Route::get('/pengaduan/buat',             [UserComplaintController::class, 'create'])->name('complaints.create');
     Route::post('/pengaduan',                 [UserComplaintController::class, 'store'])
         ->middleware('throttle:complaints')->name('complaints.store');
 
-    // Binding by code (aman dari tebakan ID numerik)
     Route::get('/pengaduan/{complaint:code}', [UserComplaintController::class, 'show'])->name('complaints.show');
 });
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – Dashboard (admin & super-admin)
+| ADMIN – Dashboard
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth', 'verified', 'role:admin|super-admin'])->group(function () {
-    // Pastikan AdminDashboardController bersifat __invoke
+Route::middleware(['auth', 'verified', 'role:admin|super-admin'])->group(function () { 
     Route::get('/admin', AdminDashboardController::class)->name('admin.dashboard');
 
-    // Halaman statis admin
     Route::view('/admin/manajemen-pengaduan', 'dashboard.admin.manajemen-pengaduan')
         ->name('admin.manajemen-pengaduan');
 });
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – Pengaduan (admin & super-admin)  ★ Force binding by ID
+| ADMIN – Pengaduan
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:complaint.manage'])
@@ -117,7 +114,7 @@ Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:com
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – Manajemen User (super-admin only)
+| ADMIN – Manajemen User
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified', 'role:super-admin'])
@@ -143,7 +140,7 @@ Route::middleware(['auth', 'verified', 'role:super-admin'])
 
 /*
 |--------------------------------------------------------------------------
-| ADMIN – News (admin & super-admin)
+| ADMIN – News
 |--------------------------------------------------------------------------
 */
 Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:news.manage'])
@@ -162,7 +159,7 @@ Route::middleware(['auth', 'verified', 'role:admin|super-admin', 'permission:new
 
 /*
 |--------------------------------------------------------------------------
-| Publik – Berita (scope published + slug)
+| Publik – Berita
 |--------------------------------------------------------------------------
 */
 Route::get('/berita', function () {
@@ -175,22 +172,6 @@ Route::get('/berita/{news:slug}', function (News $news) {
     return view('news.show', compact('news'));
 })->name('news.show');
 
-/*
-|--------------------------------------------------------------------------
-| Auth routes (Breeze)
-|--------------------------------------------------------------------------
-*/
 require __DIR__ . '/auth.php';
 
-/*
-|--------------------------------------------------------------------------
-| DEV ONLY – Test error
-|--------------------------------------------------------------------------
-*/
-
-/*
-|--------------------------------------------------------------------------
-| Fallback
-|--------------------------------------------------------------------------
-*/
 Route::fallback(fn () => abort(404));

@@ -9,6 +9,11 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
+
+    public function __construct()
+        {
+            $this->middleware(['auth', 'verified', 'role:user']);
+        }
     public function index(): View
     {
         $meId = Auth::id();

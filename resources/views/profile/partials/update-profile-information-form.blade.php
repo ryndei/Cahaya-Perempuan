@@ -1,4 +1,4 @@
-{{-- resources/views/profile/partials/update-profile-information-form.blade.php --}}
+
 @php
   $user = auth()->user();
 @endphp

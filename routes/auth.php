@@ -39,7 +39,7 @@ Route::middleware('guest')->group(function () {
 
 Route::middleware('auth')->group(function () {
     /**
-     * Email Verification via OTP (tanpa klik tautan)
+     * Email Verification via OTP
      * Halaman input OTP + verifikasi + kirim ulang
      */
     Route::get('verify-email', function () {
@@ -47,28 +47,12 @@ Route::middleware('auth')->group(function () {
     })->name('verification.notice');
 
     Route::post('verify-email/otp', [EmailOtpController::class, 'verify'])
-        ->middleware('throttle:5,1') // max 5 submit/menit
+        ->middleware('throttle:5,1') 
         ->name('verification.otp.verify');
 
     Route::post('verify-email/otp/resend', [EmailOtpController::class, 'resend'])
-        ->middleware('throttle:3,1') // max 3 kirim ulang/menit
+        ->middleware('throttle:3,1') 
         ->name('verification.otp.resend');
-
-    /**
-     * Rute default verifikasi via tautan
-     * 
-     *
-     * use App\Http\Controllers\Auth\VerifyEmailController;
-     * use App\Http\Controllers\Auth\EmailVerificationNotificationController;
-     *
-     * Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-     *     ->middleware(['signed', 'throttle:6,1'])
-     *     ->name('verification.verify');
-     *
-     * Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-     *     ->middleware('throttle:6,1')
-     *     ->name('verification.send');
-     */
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
